@@ -1,4 +1,3 @@
-import time
 from itertools import combinations
 
 import numpy as np
@@ -8,8 +7,7 @@ from scipy.optimize import dual_annealing
 
 
 def num_experiments(problem, model_type="linear", n_dof=3):
-    """Determine the number of experiments needed to fit a model to a given problem.
-    """
+    """Determine the number of experiments needed to fit a model to a given problem."""
     continuous = [p for p in problem.inputs if isinstance(p, opti.Continuous)]
     discretes = [p for p in problem.inputs if isinstance(p, opti.Discrete)]
     categoricals = [p for p in problem.inputs if isinstance(p, opti.Categorical)]
@@ -50,57 +48,24 @@ def logD(A):
 
 def optimal_design(problem, model_type="linear"):
     """Generate a D-optimal design for a given problem assuming a linear model."""
-
+    D = problem.n_inputs
     N = num_experiments(problem, model_type)
     if model_type != "linear":
         raise NotImplementedError("Currently, only linear models implemented.")
 
-    # penalty terms for violating constraints
-    if problem.constraints is None: 
-        def penalty(A):
-            return 1
-    else:
-        def penalty(A):
-            X = pd.DataFrame(A, columns=problem.inputs.names)
-            return problem.constraints(X).clip(0, None).sum()
-
     def objective(x):
         A = x.reshape(N, D)
-        return -logD(A) + penalty(A)
+        obj = -logD(A)
+        if problem.constraints is not None:
+            X = pd.DataFrame(A, columns=problem.inputs.names)
+            penalty = problem.constraints(X).clip(0, None).sum().values[0]
+            obj += penalty
+        return obj
 
     A0 = problem.sample_inputs(N).values  # initial guess
     bounds = [(p.bounds) for p in problem.inputs] * N  # box bounds
 
-    res = dual_annealing(
-        objective,
-        x0=A0.reshape(-1),
-        bounds=bounds,
-        maxiter=100
-    )
+    res = dual_annealing(objective, x0=A0.reshape(-1), bounds=bounds, maxiter=100)
 
     A = res["x"].reshape(N, D)
     return A
-
-
-if __name__ == "__main__":
-    D = 4  # dimensionality
-
-    inputs = opti.Parameters([opti.Continuous(f"x{i}", [0, 1]) for i in range(D)])
-    
-    problem = opti.Problem(
-        inputs=inputs,
-        outputs=[opti.Continuous("y")],
-        constraints=[opti.NChooseK(inputs.names, max_active=3)]
-    )
-
-    t = time.time()
-    A = optimal_design(problem)    
-    t = time.time() - t
-
-    print(f"logD: {logD(A):.2f}")
-    print(f"time: {t:.1f}")
-    print(A.round(3))
-
-    # 4D -> 5s w/o constraints, 180s with n-choose-k
-    # 10D -> 63s
-    # 15D -> 187.5

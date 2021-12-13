@@ -1,17 +1,20 @@
-from doe.dopt import num_experiments
 import opti
+
+from doe.design import num_experiments, optimal_design
 
 
 def test_num_experiments_continuous():
     # 5 continous inputs
     prob = opti.Problem(
-        inputs=[opti.Continuous(f"x{i}") for i in range(5)], outputs=[opti.Continuous("y")]
+        inputs=[opti.Continuous(f"x{i}") for i in range(5)],
+        outputs=[opti.Continuous("y")],
     )
 
     assert num_experiments(prob, "linear") == 6
     assert num_experiments(prob, "linear-and-quadratic") == 11
     assert num_experiments(prob, "linear-and-interactions") == 16
     assert num_experiments(prob, "fully-quadratic") == 21
+
 
 def test_num_experiments_constrained():
     # 3 continuous & 2 discrete inputs, 1 mixture constraint
@@ -31,6 +34,7 @@ def test_num_experiments_constrained():
     assert num_experiments(prob, "linear-and-quadratic") == 9
     assert num_experiments(prob, "linear-and-interactions") == 11
     assert num_experiments(prob, "fully-quadratic") == 15
+
 
 def test_num_experiments_categorical():
     # 2 continuous inputs, 1 categorical
@@ -94,3 +98,16 @@ def test_num_experiments_categorical():
     assert num_experiments(prob, "linear") == 10
     assert num_experiments(prob, "linear-and-quadratic") == 13
     assert num_experiments(prob, "linear-and-interactions") == 42
+
+
+def test_optimal_design():
+    inputs = opti.Parameters([opti.Continuous(f"x{i}", [0, 1]) for i in range(4)])
+    problem = opti.Problem(
+        inputs=inputs,
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.NChooseK(inputs.names, max_active=3)],
+    )
+    D = problem.n_inputs
+    N = num_experiments(problem)
+    A = optimal_design(problem)
+    assert A.shape == (N, D)
