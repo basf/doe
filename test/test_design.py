@@ -100,12 +100,27 @@ def test_num_experiments_categorical():
     assert num_experiments(prob, "linear-and-interactions", 0) == 42
 
 
-def test_optimal_design():
+def test_optimal_design_nchoosek():
+    # Design for a problem with an n-choose-k constraint
     inputs = opti.Parameters([opti.Continuous(f"x{i}", [0, 1]) for i in range(4)])
     problem = opti.Problem(
         inputs=inputs,
         outputs=[opti.Continuous("y")],
         constraints=[opti.NChooseK(inputs.names, max_active=3)],
+    )
+    D = problem.n_inputs
+    N = num_experiments(problem)
+    A = optimal_design(problem)
+    assert A.shape == (N, D)
+
+
+def test_optimal_design_mixture():
+    # Design for a problem with a mixture constraint
+    inputs = opti.Parameters([opti.Continuous(f"x{i}", [0, 1]) for i in range(4)])
+    problem = opti.Problem(
+        inputs=inputs,
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.LinearEquality(inputs.names, rhs=1)],
     )
     D = problem.n_inputs
     N = num_experiments(problem)
