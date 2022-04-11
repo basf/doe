@@ -312,13 +312,16 @@ def optimal_design(
         if verbose:
             print("Searching for a suitable constraint weighting.")
 
-        constraint_weighting = 0.5
+        constraint_weighting = 1 / 8
         constraint_violation = np.inf
         compute_constraint_violation = get_constraint_violation(problem, tol=tol)
 
         while constraint_violation > ctol:
 
             constraint_weighting *= 2
+            if constraint_violation >= 1e4 * ctol:
+                constraint_weighting *= 4
+
             if verbose:
                 print(f"Trying constraint weighting: {constraint_weighting}.")
 
@@ -373,41 +376,7 @@ def optimal_design(
     return A
 
 
-# Test problem 1 from paper
-problem = opti.Problem(
-    inputs=opti.Parameters([opti.Continuous(f"x{i}", [0, 1]) for i in range(3)]),
-    outputs=[opti.Continuous("y")],
-    constraints=[
-        opti.LinearEquality(names=["x0", "x1", "x2"], rhs=1),
-        opti.LinearInequality(["x1"], lhs=[-1], rhs=-0.1),
-        opti.LinearInequality(["x2"], lhs=[1], rhs=0.6),
-        opti.LinearInequality(["x0", "x1"], lhs=[5, 4], rhs=3.9),
-        opti.LinearInequality(["x0", "x1"], lhs=[-20, 5], rhs=-3),
-    ],
-)
-
-# import warnings
-# with warnings.catch_warnings():
-#    warnings.simplefilter("ignore")
-#    print(optimal_design(problem, "linear", n_experiments=12, verbose=True, ctol=1e-4))
-
-# Test problem 2 from paper
-problem = opti.Problem(
-    inputs=opti.Parameters(
-        [
-            opti.Continuous("x1", domain=[0.2, 0.65]),
-            opti.Continuous("x2", domain=[0.1, 0.55]),
-            opti.Continuous("x3", domain=[0.1, 0.2]),
-            opti.Continuous("x4", domain=[0.15, 0.35]),
-        ]
-    ),
-    outputs=[opti.Continuous("y")],
-    constraints=[opti.LinearEquality(names=["x1", "x2", "x3", "x4"], rhs=1)],
-)
-
-
 # TODO:
-# tests schreiben
 # constraints in SLSQP einpfelgen
 # Sampling mit NChooseK Constraint
 # bounds im accept test implementieren
