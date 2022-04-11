@@ -4,7 +4,7 @@ import numpy as np
 import opti
 import pandas as pd
 from formulaic import Formula
-from scipy.optimize import basinhopping
+from scipy.optimize import LinearConstraint, NonlinearConstraint, basinhopping
 
 
 # TODO: Umschreiben, sodass problem ein optionales Argument ist
@@ -89,7 +89,6 @@ def logD_(A: np.ndarray, n_ignore_eigvals: int) -> float:
     return np.sum(np.log(eigvals))
 
 
-# TODO: ggf. safety margins für inequalities entfernen
 def get_constraint_violation(problem: opti.Problem, tol=1e-3) -> Callable:
     """Returns a function that evaluates the constraint violation of an opti Problem with safety margins."""
     if problem.constraints is not None:
@@ -111,7 +110,7 @@ def get_constraint_violation(problem: opti.Problem, tol=1e-3) -> Callable:
                     eq_penalty[eq_penalty <= 0] = 0
                     penalty += np.sum(eq_penalty)
                 else:
-                    penalty += np.sum((constraint(A) - tol).clip(0, None).values)
+                    penalty += np.sum(constraint(A).clip(0, None).values)
             return penalty
 
     else:
@@ -122,12 +121,11 @@ def get_constraint_violation(problem: opti.Problem, tol=1e-3) -> Callable:
     return cv
 
 
-# TODO: einbauen: ablehnen, falls ausserhalb der constraints?
 def get_callback(
     problem: opti.Problem,
     model_type: Union[str, Formula],
     n_max_min_found: int = 100,
-    n_max_no_change: int = 25,
+    n_max_no_change: int = 10,
     tol: float = 1e-3,
     verbose: bool = False,
 ) -> Callable:
@@ -138,7 +136,7 @@ def get_callback(
         model_type (str or Formula): A formula containing all model terms.
         n_max_min_found (int): Number of found minima after which the algorithm will stop. Default value is 100.
         n_max_no_change (int): Algorithm stops if the best minimum has not improved for the last n_max_no_change
-            minima. Default value is 25.
+            minima. Default value is 10.
         tol (float): Tolerance for the computation of the constraint violation. Default value is 1e-3.
         verbose: prints status messages if set to True. Default value is False.
 
@@ -150,7 +148,6 @@ def get_callback(
         callback.n_calls += 1
         model_formula = get_formula_from_string(problem, model_type)
         constraint_violation = get_constraint_violation(problem, tol=tol)
-        num_ignore_eigvals = n_ignore_eigvals(problem, model_formula)
 
         if f < callback.f_opt:
             # reset n_no_change counter
@@ -159,13 +156,10 @@ def get_callback(
             # update objective value
             callback.f_opt = f
 
-            # compute value for D criterion
+            # compute constraint violation
             D = problem.n_inputs
             A = pd.DataFrame(x.reshape(len(x) // D, D), columns=problem.inputs.names)
             A = model_formula.get_model_matrix(A)
-            callback.logD_opt = logD_(A.to_numpy(), num_ignore_eigvals)
-
-            # compute constraint violation
             callback.cv_opt = constraint_violation(A)
         else:
             # increase n_no_change counter
@@ -175,20 +169,20 @@ def get_callback(
             # print status if verbose
             if callback.n_calls == 1:
                 print(
-                    "--------------------------------------------------------------------------------------------"
+                    "--------------------------------------------------------------------"
                 )
                 print(
-                    "| n_optima_found |        logD_opt        |           CV           |         f_opt         |"
+                    "| n_optima_found |        logD_opt        |           CV           |"
                 )
                 print(
-                    "--------------------------------------------------------------------------------------------"
+                    "--------------------------------------------------------------------"
                 )
 
             n_calls = str(callback.n_calls)
             while len(n_calls) < 16:
                 n_calls += " "
 
-            logD_opt = str(callback.logD_opt)
+            logD_opt = str(-callback.f_opt)
             while len(logD_opt) < 24:
                 logD_opt += " "
 
@@ -196,11 +190,7 @@ def get_callback(
             while len(cv_opt) < 24:
                 cv_opt += " "
 
-            f_opt = str(callback.f_opt)
-            while len(f_opt) < 23:
-                f_opt += " "
-
-            print("|" + n_calls + "|" + logD_opt + "|" + cv_opt + "|" + f_opt + "|")
+            print("|" + n_calls + "|" + logD_opt + "|" + cv_opt + "|")
 
         # check stop criteria
         if callback.n_calls >= callback.n_max_min_found:
@@ -215,7 +205,6 @@ def get_callback(
     callback.n_max_no_change = n_max_no_change
     callback.n_calls = 0
     callback.f_opt = np.inf
-    callback.logD_opt = np.inf
     callback.cv_opt = np.inf
     callback.verbose = verbose
     callback.n_no_change = 0
@@ -227,17 +216,12 @@ def get_callback(
 def get_objective(
     problem: opti.Problem,
     model_type: Union[str, Formula],
-    tol: float = 1e-3,
-    constraint_weight: float = 40,
 ) -> Callable:
     """Returns a function that computes the combined objective.
 
     Args:
         problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
         model_type (str or Formula): A formula containing all model terms.
-        tol (float): tolarance for the computation of constraint violation. Default value is 1e-3.
-        constraint_weight (float): relative weight factor between constraint violation and objective.
-            Default value is 40.
 
     Returns:
         A function computing the weighted sum of the logD value and the constraint violation
@@ -247,7 +231,6 @@ def get_objective(
     D = problem.n_inputs
     model_formula = get_formula_from_string(problem, model_type, rhs_only=True)
     num_ignore_eigvals = n_ignore_eigvals(problem, model_type)
-    constraint_violation = get_constraint_violation(problem, tol=tol)
 
     # define objective function
     def objective(x):
@@ -257,7 +240,6 @@ def get_objective(
 
         # compute objective value
         obj = -logD_(A.to_numpy(), num_ignore_eigvals)
-        obj += constraint_weight * constraint_violation(A)
         return obj
 
     return objective
@@ -271,8 +253,6 @@ def optimal_design(
     n_max_min_found: int = 1e2,
     n_max_no_change: int = 10,
     tol: float = 1e-3,
-    ctol: float = 1e-4,
-    constraint_weighting: Optional[float] = None,
     verbose=False,
 ) -> pd.DataFrame:
     """Generate a D-optimal design for a given problem assuming a linear model.
@@ -284,19 +264,14 @@ def optimal_design(
             Default value is None.
         n_max_min_found (int): Algorithm stops after this number of found minima. Default value is 100
         n_max_no_change (int): Algorithm stops if the last n_max_no_change minima have
-            not improved the best discovered minimum. Default value is 25.
+            not improved the best discovered minimum. Default value is 10.
         tol (float): tolarance for the computation of constraint violation. Default value is 1e-3.
-        ctol (float): tolerance for constraint violation when searching for a good constraint weighting.
-            Only meaningful if no value for constraint_weighting is given.
-        constraint_weighting (float): optional float parameter. If a value is given, automatic
-            determination of the constraint weighting will not be done. Instead, the given value will be used.
         verbose (bool): status messages are shown regularily if set to True.
 
     Returns:
         A pd.DataFrame object containing the best found input parameters for the experiments.
     """
     # TODO: unterstützung für categorical inputs
-    # TODO: optimale anzahl an Experimenten N finden
     D = problem.n_inputs
     model_formula = get_formula_from_string(problem, model_type, rhs_only=True)
 
@@ -305,46 +280,6 @@ def optimal_design(
         n_experiments = (
             len(model_formula.terms) - n_ignore_eigvals(problem, model_formula) + 3
         )
-
-    # find correct constraint weighting
-    if constraint_weighting is None:
-
-        if verbose:
-            print("Searching for a suitable constraint weighting.")
-
-        constraint_weighting = 1 / 8
-        constraint_violation = np.inf
-        compute_constraint_violation = get_constraint_violation(problem, tol=tol)
-
-        while constraint_violation > ctol:
-
-            constraint_weighting *= 2
-            if constraint_violation >= 1e4 * ctol:
-                constraint_weighting *= 4
-
-            if verbose:
-                print(f"Trying constraint weighting: {constraint_weighting}.")
-
-            callback = get_callback(
-                problem, model_formula, n_max_min_found=2, tol=tol, verbose=verbose
-            )
-            objective = get_objective(problem, model_type, tol, constraint_weighting)
-            result = basinhopping(
-                objective,
-                x0=problem.sample_inputs(n_experiments).values.reshape(-1),
-                minimizer_kwargs={
-                    "method": "SLSQP",
-                    "bounds": [(p.bounds) for p in problem.inputs] * n_experiments,
-                },
-                callback=callback,
-            )
-            A = pd.DataFrame(
-                result["x"].reshape(n_experiments, D), columns=problem.inputs.names
-            )
-            constraint_violation = compute_constraint_violation(A)
-
-        if verbose:
-            print(f"Found good constraint weighting: {constraint_weighting}.")
 
     # get callback for stop criterion an status messages
     callback = get_callback(
@@ -357,16 +292,33 @@ def optimal_design(
     )
 
     # get objective function
-    objective = get_objective(problem, model_type, tol, constraint_weighting)
+    objective = get_objective(problem, model_type)
 
+    # write constraints as scipy constraints
+    constraints = constraints_as_scipy_constraints(problem, n_experiments, tol)
+
+    # write accept_test function to test if a step is inside the bounds
+    def accept_test(**kwargs):
+        x = kwargs["x_new"]
+        test_max = bool(np.all(x <= accept_test.ub))
+        test_min = bool(np.all(x >= accept_test.lb))
+        return test_max and test_min
+
+    bounds = np.array([(p.bounds) for p in problem.inputs] * n_experiments).T
+    accept_test.lb = bounds[0]
+    accept_test.ub = bounds[1]
+
+    # do the optimization
     result = basinhopping(
         objective,
         x0=problem.sample_inputs(n_experiments).values.reshape(-1),
         minimizer_kwargs={
             "method": "SLSQP",
             "bounds": [(p.bounds) for p in problem.inputs] * n_experiments,
+            "constraints": constraints,
         },
         callback=callback,
+        accept_test=accept_test,
     )
 
     A = pd.DataFrame(
@@ -376,19 +328,111 @@ def optimal_design(
     return A
 
 
-# TODO:
-# constraints in SLSQP einpfelgen
-# Sampling mit NChooseK Constraint
-# bounds im accept test implementieren
-# bessere Stoppkriterien werden gebraucht
-# Strategie für richtiges Verhältnis penalty/obj?
-#       fixen, möglichst guten Zusammenhang finden
-#       anfangen bei Skalierungsfaktor 1 für penalty --> optimieren
-#           --> constraintsverletzung zu groß? --> erneut mit größerem Skalierungsfaktor --> ...
-#       anfangen mit Skalierungsfaktor 1 für penalty --> kurz optimieren
-#           --> aus Verhältnis von logD und penalty für Bestimmung des Skalierungsfaktors nutzen
-# pymoo ausprobieren
+# TODO: testen
+def constraints_as_scipy_constraints(
+    problem: opti.Problem, n_experiments: int, tol: float = 1e-3
+):
+    """Formulates opti constraints as scipy constraints.
 
+    Args:
+        problem (opti.Problem): problem whose constraints should be formulated as scipy constraints.
+        n_experiments (int): Number of instances of inputs for problem that are evaluated together.
+        tol (float): Tolerance for the computation of the constraint violation. Default value is 1e-3.
+
+    Returns:
+        A list of scipy constraints corresponding to the constraints of the given opti problem.
+    """
+    D = problem.n_inputs
+
+    constraints = []
+    for c in problem.constraints:
+        if isinstance(c, opti.LinearEquality):
+            # write lower/upper bound as vector
+            lb = np.ones(n_experiments) * (c.rhs - tol)
+            ub = np.ones(n_experiments) * (c.rhs + tol)
+
+            # write constraint as matrix
+            lhs = {c.names[i]: c.lhs[i] for i in range(len(c.names))}
+            row = np.zeros(D)
+            for i, name in enumerate(problem.inputs.names):
+                if name in lhs.keys():
+                    row[i] = lhs[name]
+
+            A = np.zeros(shape=(n_experiments, D * n_experiments))
+            for i in range(n_experiments):
+                A[i, i * D : (i + 1) * D] = row
+
+            constraints.append(LinearConstraint(A, lb, ub))
+
+        elif isinstance(c, opti.LinearInequality):
+            # write upper/lowe bound as vector
+            lb = -np.inf * np.ones(n_experiments)
+            ub = np.ones(n_experiments) * c.rhs
+
+            # write constraint as matrix
+            lhs = {c.names[i]: c.lhs[i] for i in range(len(c.names))}
+            row = np.zeros(D)
+            for i, name in enumerate(problem.inputs.names):
+                if name in lhs.keys():
+                    row[i] = lhs[name]
+
+            A = np.zeros(shape=(n_experiments, D * n_experiments))
+            for i in range(n_experiments):
+                A[i, i * D : (i + 1) * D] = row
+
+            constraints.append(LinearConstraint(A, lb, ub))
+
+        elif isinstance(c, opti.NonlinearEquality):
+            # write upper/lower bound as vector
+            lb = np.zeros(n_experiments) - tol
+            ub = np.zeros(n_experiments) + tol
+
+            # define constraint evaluation
+            def fun(x: np.ndarray) -> float:
+                x = pd.DataFrame(
+                    x.reshape(len(x) // D, D), columns=problem.inputs.names
+                )
+                return c(x).to_numpy()
+
+            constraints.append(NonlinearConstraint(fun, lb, ub))
+
+        elif isinstance(c, opti.NonlinearInequality):
+            # write upper/lower bound as vector
+            lb = -np.inf * np.ones(n_experiments)
+            ub = np.zeros(n_experiments)
+
+            # define constraint evaluation
+            def fun(x: np.ndarray) -> float:
+                x = pd.DataFrame(
+                    x.reshape(len(x) // D, D), columns=problem.inputs.names
+                )
+                return c(x).to_numpy()
+
+            constraints.append(NonlinearConstraint(fun, lb, ub))
+
+        elif isinstance(c, opti.NChooseK):
+            # write upper bound as vector
+            lb = -np.inf * np.ones(n_experiments)
+            ub = np.zeros(n_experiments) + tol
+
+            # define constraint evaluation
+            def fun(x: np.ndarray) -> float:
+                x = pd.DataFrame(
+                    x.reshape(len(x) // D, D), columns=problem.inputs.names
+                )
+                return c(x).to_numpy()
+
+            constraints.append(NonlinearConstraint(fun, lb, ub))
+
+        else:
+            raise NotImplementedError(f"No implementation for this constraint: {c}")
+
+    return constraints
+
+
+# TODO:
+# Sampling mit NChooseK Constraint
+# bessere Stoppkriterien?
 
 # from itertools import combinations
 

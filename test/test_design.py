@@ -121,7 +121,7 @@ def test_get_constraint_violation():
     x = pd.DataFrame([[-1, 1, 1, 1, 1]], columns=problem.inputs.names)
     assert np.allclose(constraint_violation(x), 0)
     x = pd.DataFrame([[1, 1, 1, 1, 1]], columns=problem.inputs.names)
-    assert np.allclose(constraint_violation(x), 0.999)
+    assert np.allclose(constraint_violation(x), 1)
     x = pd.DataFrame([[5e-4, 1, 1, 1, 1]], columns=problem.inputs.names)
     assert np.allclose(constraint_violation(x), 0)
 
