@@ -83,17 +83,42 @@ def n_ignore_eigvals(
 
 # David fragen/selber denken: Du wolltest explizit, dass slogdet verwendet wird,
 # das geht jetzt nicht, da einige EW'en ausgelassen werden sollen --> in Ordnung? Gibt es was besseres?
-def logD_(A: np.ndarray, n_ignore_eigvals: int) -> float:
+def logD(A: np.ndarray, n_ignore_eigvals: int) -> float:
     """Computes the sum of the log of A.T @ A ignoring the smallest num_ignore_eigvals eigenvalues."""
     eigvals = np.sort(np.linalg.eigvals(A.T @ A))[n_ignore_eigvals:]
     return np.sum(np.log(eigvals))
 
 
-def get_constraint_violation(problem: opti.Problem, tol=1e-3) -> Callable:
-    """Returns a function that evaluates the constraint violation of an opti Problem with safety margins."""
+def get_callback(
+    problem: opti.Problem,
+    n_max_min_found: int = 100,
+    n_max_no_change: int = 10,
+    tol: float = 1e-3,
+    verbose: bool = False,
+) -> Callable:
+    """Returns a callback function for basinhopping from scipy.optimize.
+
+    Args:
+        problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
+        model_type (str or Formula): A formula containing all model terms.
+        n_max_min_found (int): Number of found minima after which the algorithm will stop. Default value is 100.
+        n_max_no_change (int): Algorithm stops if the best minimum has not improved for the last n_max_no_change
+            minima. Default value is 10.
+        tol (float): Tolerance for the computation of the constraint violation. Default value is 1e-3.
+        verbose: prints status messages if set to True. Default value is False.
+
+    Returns:
+        A callback function implementing status messages and the stop criteria for n_max_no_change, n_max_min_found.
+    """
+
+    # define constraint violation function
     if problem.constraints is not None:
 
-        def cv(A):
+        def constraint_violation(x):
+
+            D = problem.n_inputs
+            A = pd.DataFrame(x.reshape(len(x) // D, D), columns=problem.inputs.names)
+
             penalty = 0
             for constraint in problem.constraints:
                 if any(
@@ -115,39 +140,11 @@ def get_constraint_violation(problem: opti.Problem, tol=1e-3) -> Callable:
 
     else:
 
-        def cv(A):
+        def constraint_violation(x):
             return 0
-
-    return cv
-
-
-def get_callback(
-    problem: opti.Problem,
-    model_type: Union[str, Formula],
-    n_max_min_found: int = 100,
-    n_max_no_change: int = 10,
-    tol: float = 1e-3,
-    verbose: bool = False,
-) -> Callable:
-    """Returns a callback function for basinhopping from scipy.optimize.
-
-    Args:
-        problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
-        model_type (str or Formula): A formula containing all model terms.
-        n_max_min_found (int): Number of found minima after which the algorithm will stop. Default value is 100.
-        n_max_no_change (int): Algorithm stops if the best minimum has not improved for the last n_max_no_change
-            minima. Default value is 10.
-        tol (float): Tolerance for the computation of the constraint violation. Default value is 1e-3.
-        verbose: prints status messages if set to True. Default value is False.
-
-    Returns:
-        A callback function implementing status messages and the stop criteria for n_max_no_change, n_max_min_found.
-    """
 
     def callback(x, f, accept):
         callback.n_calls += 1
-        model_formula = get_formula_from_string(problem, model_type)
-        constraint_violation = get_constraint_violation(problem, tol=tol)
 
         if f < callback.f_opt:
             # reset n_no_change counter
@@ -157,10 +154,7 @@ def get_callback(
             callback.f_opt = f
 
             # compute constraint violation
-            D = problem.n_inputs
-            A = pd.DataFrame(x.reshape(len(x) // D, D), columns=problem.inputs.names)
-            A = model_formula.get_model_matrix(A)
-            callback.cv_opt = constraint_violation(A)
+            callback.cv_opt = constraint_violation(x)
         else:
             # increase n_no_change counter
             callback.n_no_change += 1
@@ -239,96 +233,12 @@ def get_objective(
         A = model_formula.get_model_matrix(A)
 
         # compute objective value
-        obj = -logD_(A.to_numpy(), num_ignore_eigvals)
+        obj = -logD(A.to_numpy(), num_ignore_eigvals)
         return obj
 
     return objective
 
 
-# TODO: testen
-def optimal_design(
-    problem: opti.Problem,
-    model_type: Union[str, Formula],
-    n_experiments: Optional[int] = None,
-    n_max_min_found: int = 1e2,
-    n_max_no_change: int = 10,
-    tol: float = 1e-3,
-    verbose=False,
-) -> pd.DataFrame:
-    """Generate a D-optimal design for a given problem assuming a linear model.
-
-    Args:
-        problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
-        model_type (str or Formula): A formula containing all model terms.
-        n_experiment (int): Optional argument to explicitly set the number of experiments.
-            Default value is None.
-        n_max_min_found (int): Algorithm stops after this number of found minima. Default value is 100
-        n_max_no_change (int): Algorithm stops if the last n_max_no_change minima have
-            not improved the best discovered minimum. Default value is 10.
-        tol (float): tolarance for the computation of constraint violation. Default value is 1e-3.
-        verbose (bool): status messages are shown regularily if set to True.
-
-    Returns:
-        A pd.DataFrame object containing the best found input parameters for the experiments.
-    """
-    # TODO: unterstützung für categorical inputs
-    D = problem.n_inputs
-    model_formula = get_formula_from_string(problem, model_type, rhs_only=True)
-
-    # David fragen/selbst nachdenken: so in Ordnung?
-    if n_experiments is None:
-        n_experiments = (
-            len(model_formula.terms) - n_ignore_eigvals(problem, model_formula) + 3
-        )
-
-    # get callback for stop criterion an status messages
-    callback = get_callback(
-        problem=problem,
-        model_type=model_formula,
-        n_max_min_found=n_max_min_found,
-        n_max_no_change=n_max_no_change,
-        tol=tol,
-        verbose=verbose,
-    )
-
-    # get objective function
-    objective = get_objective(problem, model_type)
-
-    # write constraints as scipy constraints
-    constraints = constraints_as_scipy_constraints(problem, n_experiments, tol)
-
-    # write accept_test function to test if a step is inside the bounds
-    def accept_test(**kwargs):
-        x = kwargs["x_new"]
-        test_max = bool(np.all(x <= accept_test.ub))
-        test_min = bool(np.all(x >= accept_test.lb))
-        return test_max and test_min
-
-    bounds = np.array([(p.bounds) for p in problem.inputs] * n_experiments).T
-    accept_test.lb = bounds[0]
-    accept_test.ub = bounds[1]
-
-    # do the optimization
-    result = basinhopping(
-        objective,
-        x0=problem.sample_inputs(n_experiments).values.reshape(-1),
-        minimizer_kwargs={
-            "method": "SLSQP",
-            "bounds": [(p.bounds) for p in problem.inputs] * n_experiments,
-            "constraints": constraints,
-        },
-        callback=callback,
-        accept_test=accept_test,
-    )
-
-    A = pd.DataFrame(
-        result["x"].reshape(n_experiments, D), columns=problem.inputs.names
-    )
-    A.index = [f"exp{i}" for i in range(len(A))]
-    return A
-
-
-# TODO: testen
 def constraints_as_scipy_constraints(
     problem: opti.Problem, n_experiments: int, tol: float = 1e-3
 ):
@@ -428,6 +338,88 @@ def constraints_as_scipy_constraints(
             raise NotImplementedError(f"No implementation for this constraint: {c}")
 
     return constraints
+
+
+# TODO: testen
+def optimal_design(
+    problem: opti.Problem,
+    model_type: Union[str, Formula],
+    n_experiments: Optional[int] = None,
+    n_max_min_found: int = 1e2,
+    n_max_no_change: int = 10,
+    tol: float = 1e-3,
+    verbose=False,
+) -> pd.DataFrame:
+    """Generate a D-optimal design for a given problem assuming a linear model.
+
+    Args:
+        problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
+        model_type (str or Formula): A formula containing all model terms.
+        n_experiment (int): Optional argument to explicitly set the number of experiments.
+            Default value is None.
+        n_max_min_found (int): Algorithm stops after this number of found minima. Default value is 100
+        n_max_no_change (int): Algorithm stops if the last n_max_no_change minima have
+            not improved the best discovered minimum. Default value is 10.
+        tol (float): tolarance for the computation of constraint violation. Default value is 1e-3.
+        verbose (bool): status messages are shown regularily if set to True.
+
+    Returns:
+        A pd.DataFrame object containing the best found input parameters for the experiments.
+    """
+    # TODO: unterstützung für categorical inputs
+    D = problem.n_inputs
+    model_formula = get_formula_from_string(problem, model_type, rhs_only=True)
+
+    # David fragen/selbst nachdenken: so in Ordnung?
+    if n_experiments is None:
+        n_experiments = (
+            len(model_formula.terms) - n_ignore_eigvals(problem, model_formula) + 3
+        )
+
+    # get callback for stop criterion an status messages
+    callback = get_callback(
+        problem=problem,
+        n_max_min_found=n_max_min_found,
+        n_max_no_change=n_max_no_change,
+        tol=tol,
+        verbose=verbose,
+    )
+
+    # get objective function
+    objective = get_objective(problem, model_type)
+
+    # write constraints as scipy constraints
+    constraints = constraints_as_scipy_constraints(problem, n_experiments, tol)
+
+    # write accept_test function to test if a step is inside the bounds
+    def accept_test(**kwargs):
+        x = kwargs["x_new"]
+        test_max = bool(np.all(x <= accept_test.ub))
+        test_min = bool(np.all(x >= accept_test.lb))
+        return test_max and test_min
+
+    bounds = np.array([(p.bounds) for p in problem.inputs] * n_experiments).T
+    accept_test.lb = bounds[0]
+    accept_test.ub = bounds[1]
+
+    # do the optimization
+    result = basinhopping(
+        objective,
+        x0=problem.sample_inputs(n_experiments).values.reshape(-1),
+        minimizer_kwargs={
+            "method": "SLSQP",
+            "bounds": [(p.bounds) for p in problem.inputs] * n_experiments,
+            "constraints": constraints,
+        },
+        callback=callback,
+        accept_test=accept_test,
+    )
+
+    A = pd.DataFrame(
+        result["x"].reshape(n_experiments, D), columns=problem.inputs.names
+    )
+    A.index = [f"exp{i}" for i in range(len(A))]
+    return A
 
 
 # TODO:
