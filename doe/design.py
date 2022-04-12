@@ -340,7 +340,6 @@ def constraints_as_scipy_constraints(
     return constraints
 
 
-# TODO: testen
 def optimal_design(
     problem: opti.Problem,
     model_type: Union[str, Formula],
