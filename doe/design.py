@@ -1,9 +1,11 @@
+import warnings
 from typing import Callable, Optional, Union
 
 import numpy as np
 import opti
 import pandas as pd
 from formulaic import Formula
+from numba import jit
 from scipy.optimize import LinearConstraint, NonlinearConstraint, basinhopping
 
 
@@ -75,17 +77,19 @@ def n_ignore_eigvals(
     model_formula = get_formula_from_string(problem, model_type)
     N = len(model_formula.terms) + 3
 
-    model_matrix = model_formula.get_model_matrix(problem.sample_inputs(N))
-    eigvals = np.abs(np.linalg.eigvals(model_matrix.T @ model_matrix))
+    A = problem.sample_inputs(N)
+    model_matrix = model_formula.get_model_matrix(A)
+    eigvals = np.abs(np.linalg.eigvalsh(model_matrix.T @ model_matrix))
 
     return len(eigvals) - len(eigvals[eigvals > epsilon])
 
 
 # David fragen/selber denken: Du wolltest explizit, dass slogdet verwendet wird,
 # das geht jetzt nicht, da einige EW'en ausgelassen werden sollen --> in Ordnung? Gibt es was besseres?
+@jit(nopython=True)
 def logD(A: np.ndarray, n_ignore_eigvals: int) -> float:
     """Computes the sum of the log of A.T @ A ignoring the smallest num_ignore_eigvals eigenvalues."""
-    eigvals = np.sort(np.linalg.eigvals(A.T @ A))[n_ignore_eigvals:]
+    eigvals = np.linalg.eigvalsh(A.T @ A)[n_ignore_eigvals:]
     return np.sum(np.log(eigvals))
 
 
@@ -340,6 +344,7 @@ def constraints_as_scipy_constraints(
     return constraints
 
 
+# TODO: minimizer kwargs hinzufügen
 def optimal_design(
     problem: opti.Problem,
     model_type: Union[str, Formula],
@@ -370,9 +375,14 @@ def optimal_design(
     model_formula = get_formula_from_string(problem, model_type, rhs_only=True)
 
     # David fragen/selbst nachdenken: so in Ordnung?
+    n_experiments_min = (
+        len(model_formula.terms) + 3 - n_ignore_eigvals(problem, model_formula)
+    )
     if n_experiments is None:
-        n_experiments = (
-            len(model_formula.terms) - n_ignore_eigvals(problem, model_formula) + 3
+        n_experiments = n_experiments_min
+    elif n_experiments < n_experiments_min:
+        warnings.warn(
+            f"The minimum number of experiments is {n_experiments_min}, but the current setting is n_experiments={n_experiments}."
         )
 
     # get callback for stop criterion an status messages
@@ -422,53 +432,6 @@ def optimal_design(
 
 
 # TODO:
-# Sampling mit NChooseK Constraint
+# Sampling mit NChooseK Constraint + Linear Equality
 # bessere Stoppkriterien?
-
-# from itertools import combinations
-
-# def num_experiments(
-#     problem: opti.Problem, model_type: str = "linear", n_dof: int = 3
-# ) -> int:
-#     """Determine the number of experiments needed to fit a model to a given problem.
-
-#     Args:
-#         problem (opti.Problem): Specification of the design and objective space.
-#         model_type (str, optional): Type of model. Defaults to "linear".
-#         n_dof (int, optional): Additional experiments to add degrees of freedom to a resulting model fit. Defaults to 3.
-
-#     Returns:
-#         int: Number of experiments.
-#     """
-#     continuous = [p for p in problem.inputs if isinstance(p, opti.Continuous)]
-#     discretes = [p for p in problem.inputs if isinstance(p, opti.Discrete)]
-#     categoricals = [p for p in problem.inputs if isinstance(p, opti.Categorical)]
-
-#     constraints = problem.constraints
-#     if constraints is None:
-#         constraints = []
-#     equalities = [c for c in constraints if isinstance(c, opti.LinearEquality)]
-
-#     # number of linearly independent numeric variables
-#     d = len(continuous) + len(discretes) - len(equalities) # --> Stimmt das nicht eigentlich nur, wenn alle Gleichungen linear unabhängig sind?
-
-#     # categoricals are encoded using dummy variables, hence a categorical with 4 levels requires 3 experiments in a linear model.
-#     dummy_levels = [len(p.domain) - 1 for p in categoricals]
-
-#     n_linear = 1 + d + sum(dummy_levels)
-#     n_quadratic = d  # dummy variables are not squared
-#     n_interaction = d * (d - 1) / 2
-#     n_interaction += d * sum(dummy_levels)
-#     n_interaction += sum([np.prod(k) for k in combinations(dummy_levels, 2)])
-
-#     if model_type == "linear":
-#         n_experiments = n_linear + n_dof
-#     elif model_type == "linear-and-quadratic":
-#         n_experiments = n_linear + n_quadratic + n_dof
-#     elif model_type == "linear-and-interactions":
-#         n_experiments = n_linear + n_interaction + n_dof
-#     elif model_type == "fully-quadratic":
-#         n_experiments = n_linear + n_interaction + n_quadratic + n_dof
-#     else:
-#         raise Exception(f"Unknown model type {model_type}")
-#     return int(n_experiments)
+# reduce_problem
