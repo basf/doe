@@ -1,22 +1,24 @@
-import pandas as pd
-import numpy as np
-from doe.design import get_formula_from_string, constraints_as_scipy_constraints
-import opti
-from scipy.optimize import minimize
-from typing import Union, Optional
-from formulaic import Formula
 import warnings
-from typing import Callable
-from numba import jit
-from doe.JacobianForLogdet import JacobianForLogdet
+from typing import Callable, Optional, Union
+
+import numpy as np
+import opti
+import pandas as pd
 from cyipopt import minimize_ipopt
+from formulaic import Formula
+from numba import jit
 from scipy.optimize._minimize import standardize_constraints
+
+from doe.design import constraints_as_scipy_constraints, get_formula_from_string
+from doe.JacobianForLogdet import JacobianForLogdet
+
 
 @jit(nopython=True)
 def logD(A: np.ndarray, delta: float = 1e-3) -> float:
     """Computes the sum of the log of A.T @ A ignoring the smallest num_ignore_eigvals eigenvalues."""
-    eigvals = np.linalg.eigvalsh(A.T@A + delta*np.eye(A.shape[1]))
+    eigvals = np.linalg.eigvalsh(A.T @ A + delta * np.eye(A.shape[1]))
     return np.sum(np.log(eigvals))
+
 
 def get_objective(
     problem: opti.Problem,
@@ -49,7 +51,8 @@ def get_objective(
 
     return objective
 
-#TODO: testen
+
+# TODO: testen
 def optimal_design(
     problem: opti.Problem,
     model_type: Union[str, Formula],
@@ -60,7 +63,7 @@ def optimal_design(
     maxiter: int = 100,
 ) -> pd.DataFrame:
     """Function computing a d-optimal design" for a given opti problem and model.
-    
+
     Args:
         problem (opti.Problem): problem containing the inputs and constraints.
         model_type (str, Formula): keyword or formulaic Formula describing the model.
@@ -70,7 +73,7 @@ def optimal_design(
         delta (float): Regularization parameter. Default value is 1e-3.
         disp (int): Verbosity parameter for IPOPT. Valid range is 0 <= disp <= 12. Default value is 0.
         maxiter (int): maximum number of iterations. Default value is 100.
-    
+
     """
 
     D = problem.n_inputs
@@ -78,12 +81,14 @@ def optimal_design(
 
     # David fragen/selbst nachdenken: so in Ordnung?
     n_experiments_min = (
-            len(model_formula.terms) + 2 #- n_ignore_eigvals(problem, model_formula) 
-        )
+        len(model_formula.terms) + 2  # - n_ignore_eigvals(problem, model_formula)
+    )
     if n_experiments is None:
         n_experiments = n_experiments_min
     elif n_experiments < n_experiments_min:
-        warnings.warn(f"The minimum number of experiments is {n_experiments_min}, but the current setting is n_experiments={n_experiments}.")
+        warnings.warn(
+            f"The minimum number of experiments is {n_experiments_min}, but the current setting is n_experiments={n_experiments}."
+        )
 
     # get objective function
     objective = get_objective(problem, model_type, delta=delta)
@@ -97,18 +102,18 @@ def optimal_design(
     # method used
     method = "SLSQP"
 
-    #initial values
+    # initial values
     x0 = problem.sample_inputs(n_experiments).values.reshape(-1)
 
     # do the optimization
     result = minimize_ipopt(
         objective,
         x0=x0,
-        method= method,
-        bounds= [(p.bounds) for p in problem.inputs] * n_experiments,
-        constraints= standardize_constraints(constraints, x0, method),
-        options= {"maxiter":maxiter, 'disp':disp},
-        jac = J.jacobian
+        method=method,
+        bounds=[(p.bounds) for p in problem.inputs] * n_experiments,
+        constraints=standardize_constraints(constraints, x0, method),
+        options={"maxiter": maxiter, "disp": disp},
+        jac=J.jacobian,
     )
 
     A = pd.DataFrame(

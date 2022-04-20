@@ -7,7 +7,6 @@ import pandas as pd
 from formulaic import Formula
 from numba import jit
 from scipy.optimize import LinearConstraint, NonlinearConstraint, basinhopping
-from scipy.optimize._constraints import new_constraint_to_old
 
 
 # TODO: Umschreiben, sodass problem ein optionales Argument ist
@@ -245,7 +244,10 @@ def get_objective(
 
 
 def constraints_as_scipy_constraints(
-    problem: opti.Problem, n_experiments: int, tol: float = 1e-3, old_constraint=False,
+    problem: opti.Problem,
+    n_experiments: int,
+    tol: float = 1e-3,
+    old_constraint=False,
 ):
     """Formulates opti constraints as scipy constraints.
 
