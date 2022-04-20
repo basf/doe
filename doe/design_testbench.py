@@ -9,6 +9,8 @@ import warnings
 from typing import Callable
 from numba import jit
 from doe.JacobianForLogdet import JacobianForLogdet
+from cyipopt import minimize_ipopt
+from scipy.optimize._minimize import standardize_constraints
 
 @jit(nopython=True)
 def logD(A: np.ndarray, delta: float = 1e-3) -> float:
@@ -54,6 +56,8 @@ def optimal_design(
     n_experiments: Optional[int] = None,
     tol: float = 1e-3,
     delta: float = 1e-3,
+    disp: int = 0,
+    maxiter: int = 100,
 ) -> pd.DataFrame:
     """Function computing a d-optimal design" for a given opti problem and model.
     
@@ -64,8 +68,8 @@ def optimal_design(
             the number of model terms + 3.
         tol (float): Tolerance for equality/NChooseK constraint violation. Default value is 1e-3.
         delta (float): Regularization parameter. Default value is 1e-3.
-
-    
+        disp (int): Verbosity parameter for IPOPT. Valid range is 0 <= disp <= 12. Default value is 0.
+        maxiter (int): maximum number of iterations. Default value is 100.
     
     """
 
@@ -90,14 +94,20 @@ def optimal_design(
     # write constraints as scipy constraints
     constraints = constraints_as_scipy_constraints(problem, n_experiments, tol)
 
+    # method used
+    method = "SLSQP"
+
+    #initial values
+    x0 = problem.sample_inputs(n_experiments).values.reshape(-1)
+
     # do the optimization
-    result = minimize(
+    result = minimize_ipopt(
         objective,
-        x0=problem.sample_inputs(n_experiments).values.reshape(-1),
-        method= "SLSQP",
+        x0=x0,
+        method= method,
         bounds= [(p.bounds) for p in problem.inputs] * n_experiments,
-        constraints= constraints,
-        options= {"disp":True, "maxiter":2},
+        constraints= standardize_constraints(constraints, x0, method),
+        options= {"maxiter":maxiter, 'disp':disp},
         jac = J.jacobian
     )
 
@@ -106,23 +116,3 @@ def optimal_design(
     )
     A.index = [f"exp{i}" for i in range(len(A))]
     return A
-
-
-ndim = 17
-
-problem = opti.Problem(
-    inputs = opti.Parameters([opti.Continuous(f"x{i+1}", [0, 1]) for i in range(ndim)]),
-    outputs = [opti.Continuous("y")],
-    constraints = [opti.LinearEquality(names=[f"x{i+1}" for i in range(ndim)], rhs=1)] 
-#    + [opti.LinearInequality(names=[f"x{i+1}"], lhs=[1], rhs=1) for i in range(ndim)]
-#    + [opti.LinearInequality(names=[f"x{i+1}"], lhs=[-1], rhs=0) for i in range(ndim)]
-)
-
-
-import time
-#np.random.seed(1)
-
-t = time.time()
-X = optimal_design(problem, "fully-quadratic")
-print(time.time()-t)
-print(np.round(X,2))
