@@ -16,6 +16,7 @@ from doe.basinhopping_ipopt import basinhopping_ipopt
 
 
 #TODO: testen
+#TODO: ggf durch np.linalg.det oder np.linalg.slogdet ersetzen --> bessere laufzeit ab ca. n=1000
 @jit(nopython=True)
 def logD(A: np.ndarray, delta: float = 1e-3) -> float:
     """Computes the sum of the log of A.T @ A ignoring the smallest num_ignore_eigvals eigenvalues."""

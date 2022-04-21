@@ -88,6 +88,7 @@ class JacobianForLogdet:
         """Computes the full jacobian for the given input."""
 
         # get model matrix X
+        x = np.array(x)
         x = x.reshape(self.n_experiments, self.n_vars)
         X = pd.DataFrame(x, columns=self.vars)
         X = self.model.get_model_matrix(X).to_numpy()
@@ -148,6 +149,7 @@ def default_jacobian_building_block(
 
     def jacobian_building_block(x: np.ndarray) -> np.ndarray:
         """Computes the jacobian building block for a single experiment with inputs x."""
+        x = np.array(x)
         B = np.zeros(shape=(n_vars, len(terms)))
 
         # derivatives of intercept term are zero
