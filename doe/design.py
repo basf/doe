@@ -9,17 +9,17 @@ from numba import jit
 from scipy.optimize import LinearConstraint, NonlinearConstraint, basinhopping
 
 
-# TODO: Umschreiben, sodass problem ein optionales Argument ist
 def get_formula_from_string(
-    problem: opti.Problem,
-    model_type: Union[str, Formula],
-    rhs_only=True,
+    model_type: Union[str, Formula] ="linear",
+    problem: Optional[opti.Problem] =None,
+    rhs_only: bool=True,
 ) -> Formula:
     """Reformulates a string describing a model or certain keywords as Formula objects.
 
     Args:
-        problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
         model_type (str or Formula): A formula containing all model terms.
+        problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
+            Only needed if the model is defined by a keyword
         rhs_only (bool): The function returns only the right hand side of the formula if set to True.
 
     Returns:
@@ -28,17 +28,24 @@ def get_formula_from_string(
     if isinstance(model_type, Formula):
         return model_type
 
+    #build model if a keyword and a problem are given.
     else:
+        #linear model
         if model_type == "linear":
+            assert problem is not None, "If the model is described by a keyword a problem must be provided"
             formula = "".join([input.name + " + " for input in problem.inputs])
 
+        #linear and interactions model
         elif model_type == "linear-and-quadratic":
+            assert problem is not None, "If the model is described by a keyword a problem must be provided."
             formula = "".join([input.name + " + " for input in problem.inputs])
             formula += "".join(
                 ["{" + input.name + "**2} + " for input in problem.inputs]
             )
 
+        #linear and quadratic model
         elif model_type == "linear-and-interactions":
+            assert problem is not None, "If the model is described by a keyword a problem must be provided."
             formula = "".join([input.name + " + " for input in problem.inputs])
             for i in range(problem.n_inputs):
                 for j in range(i):
@@ -46,7 +53,9 @@ def get_formula_from_string(
                         problem.inputs.names[j] + ":" + problem.inputs.names[i] + " + "
                     )
 
+        #fully quadratic model
         elif model_type == "fully-quadratic":
+            assert problem is not None, "If the model is described by a keyword a problem must be provided."
             formula = "".join([input.name + " + " for input in problem.inputs])
             for i in range(problem.n_inputs):
                 for j in range(i):
@@ -74,18 +83,18 @@ def n_ignore_eigvals(
 ) -> int:
     """Computes the number of eigenvalues of the information matrix that are necessarily zero because of
     equality constraints."""
-    model_formula = get_formula_from_string(problem, model_type)
+    # sample points (fulfilling the constraints)
+    model_formula = get_formula_from_string(model_type=model_type, problem=problem, rhs_only=True)
     N = len(model_formula.terms) + 3
-
     A = problem.sample_inputs(N)
+
+    #compute eigenvalues of information matrix
     model_matrix = model_formula.get_model_matrix(A)
     eigvals = np.abs(np.linalg.eigvalsh(model_matrix.T @ model_matrix))
 
     return len(eigvals) - len(eigvals[eigvals > epsilon])
 
 
-# David fragen/selber denken: Du wolltest explizit, dass slogdet verwendet wird,
-# das geht jetzt nicht, da einige EW'en ausgelassen werden sollen --> in Ordnung? Gibt es was besseres?
 @jit(nopython=True)
 def logD(A: np.ndarray, n_ignore_eigvals: int) -> float:
     """Computes the sum of the log of A.T @ A ignoring the smallest num_ignore_eigvals eigenvalues."""
@@ -215,19 +224,18 @@ def get_objective(
     problem: opti.Problem,
     model_type: Union[str, Formula],
 ) -> Callable:
-    """Returns a function that computes the combined objective.
+    """Returns a function that computes the objective.
 
     Args:
         problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
         model_type (str or Formula): A formula containing all model terms.
 
     Returns:
-        A function computing the weighted sum of the logD value and the constraint violation
-        for a given input.
+        A function computing the objective -logD for a given input vector x
 
     """
     D = problem.n_inputs
-    model_formula = get_formula_from_string(problem, model_type, rhs_only=True)
+    model_formula = get_formula_from_string(model_type=model_type, problem=problem, rhs_only=True)
     num_ignore_eigvals = n_ignore_eigvals(problem, model_type)
 
     # define objective function
@@ -247,7 +255,6 @@ def constraints_as_scipy_constraints(
     problem: opti.Problem,
     n_experiments: int,
     tol: float = 1e-3,
-    old_constraint=False,
 ):
     """Formulates opti constraints as scipy constraints.
 
@@ -375,7 +382,7 @@ def optimal_design(
     """
     # TODO: unterstützung für categorical inputs
     D = problem.n_inputs
-    model_formula = get_formula_from_string(problem, model_type, rhs_only=True)
+    model_formula = get_formula_from_string(model_type=model_type, problem=problem, rhs_only=True)
 
     # David fragen/selbst nachdenken: so in Ordnung?
     n_experiments_min = (
@@ -437,4 +444,3 @@ def optimal_design(
 # TODO:
 # Sampling mit NChooseK Constraint + Linear Equality
 # bessere Stoppkriterien?
-# reduce_problem

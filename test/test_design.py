@@ -21,19 +21,19 @@ def test_get_formula_from_string():
 
     # linear model
     terms = ["1", "x0", "x1", "x2"]
-    model_formula = get_formula_from_string(problem, "linear")
+    model_formula = get_formula_from_string(problem=problem, model_type="linear")
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
 
     # linear and interaction
     terms = ["1", "x0", "x1", "x2", "x0:x1", "x0:x2", "x1:x2"]
-    model_formula = get_formula_from_string(problem, "linear-and-interactions")
+    model_formula = get_formula_from_string(problem=problem, model_type="linear-and-interactions")
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
 
     # linear and quadratic
     terms = ["1", "x0", "x1", "x2", "x0**2", "x1**2", "x2**2"]
-    model_formula = get_formula_from_string(problem, "linear-and-quadratic")
+    model_formula = get_formula_from_string(problem=problem, model_type="linear-and-quadratic")
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
 
@@ -50,7 +50,7 @@ def test_get_formula_from_string():
         "x1**2",
         "x2**2",
     ]
-    model_formula = get_formula_from_string(problem, "fully-quadratic")
+    model_formula = get_formula_from_string(problem=problem, model_type="fully-quadratic")
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
 
@@ -58,7 +58,7 @@ def test_get_formula_from_string():
     terms_lhs = ["y"]
     terms_rhs = ["1", "x0", "x0**2", "x0:x1"]
     model_formula = get_formula_from_string(
-        problem, "y ~ 1 + x0 + x0:x1 + {x0**2}", rhs_only=False
+        problem=problem, model_type="y ~ 1 + x0 + x0:x1 + {x0**2}", rhs_only=False
     )
     assert all(term in terms_lhs for term in model_formula.terms.lhs)
     assert all(term in model_formula.terms.lhs for term in terms_lhs)
@@ -215,7 +215,7 @@ def test_n_ignore_eigvals_constrained():
     assert n_ignore_eigvals(prob, "linear-and-interactions") == 3
     assert n_ignore_eigvals(prob, "fully-quadratic") == 6
 
-    # NChooseK?
+    #TODO: NChooseK?
 
 
 def test_number_of_model_terms():
@@ -225,10 +225,10 @@ def test_number_of_model_terms():
         outputs=[opti.Continuous("y")],
     )
 
-    assert len(get_formula_from_string(problem, "linear").terms) == 6
-    assert len(get_formula_from_string(problem, "linear-and-quadratic").terms) == 11
-    assert len(get_formula_from_string(problem, "linear-and-interactions").terms) == 16
-    assert len(get_formula_from_string(problem, "fully-quadratic").terms) == 21
+    assert len(get_formula_from_string(problem=problem, model_type="linear").terms) == 6
+    assert len(get_formula_from_string(problem=problem, model_type="linear-and-quadratic").terms) == 11
+    assert len(get_formula_from_string(problem=problem, model_type="linear-and-interactions").terms) == 16
+    assert len(get_formula_from_string(problem=problem, model_type="fully-quadratic").terms) == 21
 
     # 3 continuous & 2 discrete inputs
     problem = opti.Problem(
@@ -242,10 +242,10 @@ def test_number_of_model_terms():
         outputs=[opti.Continuous("y")],
     )
 
-    assert len(get_formula_from_string(problem, "linear").terms) == 6
-    assert len(get_formula_from_string(problem, "linear-and-quadratic").terms) == 11
-    assert len(get_formula_from_string(problem, "linear-and-interactions").terms) == 16
-    assert len(get_formula_from_string(problem, "fully-quadratic").terms) == 21
+    assert len(get_formula_from_string(problem=problem, model_type="linear").terms) == 6
+    assert len(get_formula_from_string(problem=problem, model_type="linear-and-quadratic").terms) == 11
+    assert len(get_formula_from_string(problem=problem, model_type="linear-and-interactions").terms) == 16
+    assert len(get_formula_from_string(problem=problem, model_type="fully-quadratic").terms) == 21
 
 
 def test_optimal_design_nchoosek():
@@ -258,7 +258,7 @@ def test_optimal_design_nchoosek():
     )
     D = problem.n_inputs
     N = (
-        len(get_formula_from_string(problem, "linear").terms)
+        len(get_formula_from_string(problem=problem, model_type="linear").terms)
         - n_ignore_eigvals(problem, "linear")
         + 3
     )
@@ -276,7 +276,7 @@ def test_optimal_design_mixture():
     )
     D = problem.n_inputs
     N = (
-        len(get_formula_from_string(problem, "linear").terms)
+        len(get_formula_from_string(problem=problem, model_type="linear").terms)
         - n_ignore_eigvals(problem, "linear")
         + 3
     )
@@ -297,8 +297,9 @@ def test_optimal_design_results():
         ],
     )
 
+    np.random.seed(1)
     A = optimal_design(problem, "linear", n_experiments=12)
-    opt = np.array([[0.3, 0.1, 0.6], [0.2, 0.2, 0.6], [0.3, 0.6, 0.1], [0.7, 0.1, 0.2]])
+    opt = np.array([[0.2, 0.2, 0.6], [0.3, 0.6, 0.1], [0.7, 0.1, 0.2], [0.3, 0.1, 0.6]])
     for row in A.to_numpy():
         assert any([np.allclose(row, o, atol=5e-3) for o in opt])
     for o in opt:
