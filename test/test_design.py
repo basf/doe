@@ -1,11 +1,13 @@
 import numpy as np
 import opti
+import pandas as pd
 from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 from doe.design import (
     constraints_as_scipy_constraints,
     get_callback,
     get_formula_from_string,
+    get_jacobian_NChooseK,
     get_objective,
     logD,
     n_ignore_eigvals,
@@ -27,13 +29,17 @@ def test_get_formula_from_string():
 
     # linear and interaction
     terms = ["1", "x0", "x1", "x2", "x0:x1", "x0:x2", "x1:x2"]
-    model_formula = get_formula_from_string(problem=problem, model_type="linear-and-interactions")
+    model_formula = get_formula_from_string(
+        problem=problem, model_type="linear-and-interactions"
+    )
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
 
     # linear and quadratic
     terms = ["1", "x0", "x1", "x2", "x0**2", "x1**2", "x2**2"]
-    model_formula = get_formula_from_string(problem=problem, model_type="linear-and-quadratic")
+    model_formula = get_formula_from_string(
+        problem=problem, model_type="linear-and-quadratic"
+    )
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
 
@@ -50,7 +56,9 @@ def test_get_formula_from_string():
         "x1**2",
         "x2**2",
     ]
-    model_formula = get_formula_from_string(problem=problem, model_type="fully-quadratic")
+    model_formula = get_formula_from_string(
+        problem=problem, model_type="fully-quadratic"
+    )
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
 
@@ -167,6 +175,7 @@ def test_get_callback_constraint_violation():
 
 
 def test_get_objective():
+    # no constraints
     problem = opti.Problem(
         inputs=[opti.Continuous(f"x{i}", [0, 1]) for i in range(3)],
         outputs=[opti.Continuous("y")],
@@ -175,6 +184,17 @@ def test_get_objective():
 
     x = np.array([1, 0, 0, 0, 1, 0, 0, 0, 1])
     assert np.allclose(objective(x), 35.35050620855721)
+
+    # mixture constraint
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i}", [0, 1]) for i in range(3)],
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.LinearEquality([f"x{i}" for i in range(3)], rhs=1)],
+    )
+    objective = get_objective(problem, "linear")
+
+    x = np.array([1, 0, 0, 0, 1, 0, 0, 0, 1])
+    assert np.allclose(objective(x), -np.log(4))
 
 
 def test_logD():
@@ -215,7 +235,7 @@ def test_n_ignore_eigvals_constrained():
     assert n_ignore_eigvals(prob, "linear-and-interactions") == 3
     assert n_ignore_eigvals(prob, "fully-quadratic") == 6
 
-    #TODO: NChooseK?
+    # TODO: NChooseK?
 
 
 def test_number_of_model_terms():
@@ -226,9 +246,28 @@ def test_number_of_model_terms():
     )
 
     assert len(get_formula_from_string(problem=problem, model_type="linear").terms) == 6
-    assert len(get_formula_from_string(problem=problem, model_type="linear-and-quadratic").terms) == 11
-    assert len(get_formula_from_string(problem=problem, model_type="linear-and-interactions").terms) == 16
-    assert len(get_formula_from_string(problem=problem, model_type="fully-quadratic").terms) == 21
+    assert (
+        len(
+            get_formula_from_string(
+                problem=problem, model_type="linear-and-quadratic"
+            ).terms
+        )
+        == 11
+    )
+    assert (
+        len(
+            get_formula_from_string(
+                problem=problem, model_type="linear-and-interactions"
+            ).terms
+        )
+        == 16
+    )
+    assert (
+        len(
+            get_formula_from_string(problem=problem, model_type="fully-quadratic").terms
+        )
+        == 21
+    )
 
     # 3 continuous & 2 discrete inputs
     problem = opti.Problem(
@@ -243,9 +282,28 @@ def test_number_of_model_terms():
     )
 
     assert len(get_formula_from_string(problem=problem, model_type="linear").terms) == 6
-    assert len(get_formula_from_string(problem=problem, model_type="linear-and-quadratic").terms) == 11
-    assert len(get_formula_from_string(problem=problem, model_type="linear-and-interactions").terms) == 16
-    assert len(get_formula_from_string(problem=problem, model_type="fully-quadratic").terms) == 21
+    assert (
+        len(
+            get_formula_from_string(
+                problem=problem, model_type="linear-and-quadratic"
+            ).terms
+        )
+        == 11
+    )
+    assert (
+        len(
+            get_formula_from_string(
+                problem=problem, model_type="linear-and-interactions"
+            ).terms
+        )
+        == 16
+    )
+    assert (
+        len(
+            get_formula_from_string(problem=problem, model_type="fully-quadratic").terms
+        )
+        == 21
+    )
 
 
 def test_optimal_design_nchoosek():
@@ -362,3 +420,104 @@ def test_constraints_as_scipy_constraints():
         assert len(c.lb) == n_experiments
         assert len(c.ub) == n_experiments
         assert np.allclose(c.fun(np.array([1, 1, 1, 1, 1, 1])), [1, 1])
+
+    # problem with NChooseK constraint
+    inputs = opti.Parameters([opti.Continuous(f"x{i}", [0, 1]) for i in range(4)])
+    problem = opti.Problem(
+        inputs=inputs,
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.NChooseK(inputs.names, max_active=2)],
+    )
+    n_experiments = 5
+
+    x = np.array(
+        [
+            [1, -10, 2, -1.5],
+            [2, -10, 3, 5],
+            [0, 1, 0, -2],
+            [2, -1, 1e-5, 1],
+            [1, 1, 1, 1],
+        ]
+    ).flatten()
+
+    constraints = constraints_as_scipy_constraints(problem, n_experiments)
+
+    assert isinstance(constraints[0], NonlinearConstraint)
+    assert len(constraints[0].lb) == n_experiments
+    assert len(constraints[0].ub) == n_experiments
+    assert np.allclose(
+        constraints[0].fun(x),
+        problem.constraints[0](
+            pd.DataFrame(x.reshape(5, 4), columns=["x0", "x1", "x2", "x3"])
+        ),
+    )
+
+
+def test_get_jacobian_NChooseK():
+
+    # problem with NChooseK constraint
+    inputs = opti.Parameters([opti.Continuous(f"x{i}", [0, 1]) for i in range(4)])
+    problem = opti.Problem(
+        inputs=inputs,
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.NChooseK(inputs.names, max_active=2)],
+    )
+    n_experiments = 5
+    D = problem.n_inputs
+
+    x = np.array(
+        [
+            [1, -10, 2, -1.5],
+            [2, -10, 3, 5],
+            [0, 1, 0, -2],
+            [2, -1, 1e-5, 1],
+            [1, 1, 1, 1],
+        ]
+    ).flatten()
+
+    jac = get_jacobian_NChooseK(problem.constraints[0], problem, n_experiments)
+
+    np.random.seed(1)
+    jac_corr = np.array(
+        [
+            [1, 0, 0, -1],
+            [1, 0, 1, 0],
+            [0, 0, 0, 0],
+            [0, -1, 0, 0],
+            [1, 1, 0, 0],
+        ]
+    )
+    J = np.zeros(shape=(n_experiments, D * n_experiments))
+    for i in range(n_experiments):
+        J[i, i * D : (i + 1) * D] = jac_corr[i]
+    assert np.allclose(jac(x), J)
+
+    np.random.seed(100)
+    jac_corr = np.array(
+        [
+            [1, 0, 0, -1],
+            [1, 0, 1, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 1],
+            [1, 0, 0, 1],
+        ]
+    )
+    J = np.zeros(shape=(n_experiments, D * n_experiments))
+    for i in range(n_experiments):
+        J[i, i * D : (i + 1) * D] = jac_corr[i]
+    assert np.allclose(jac(x), J)
+
+    np.random.seed(200)
+    jac_corr = np.array(
+        [
+            [1, 0, 0, -1],
+            [1, 0, 1, 0],
+            [0, 0, 0, 0],
+            [0, -1, 0, 0],
+            [0, 1, 1, 0],
+        ]
+    )
+    J = np.zeros(shape=(n_experiments, D * n_experiments))
+    for i in range(n_experiments):
+        J[i, i * D : (i + 1) * D] = jac_corr[i]
+    assert np.allclose(jac(x), J)
