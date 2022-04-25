@@ -1,17 +1,36 @@
-from cyipopt import minimize_ipopt
 import numpy as np
-import scipy.optimize
+from cyipopt import minimize_ipopt
 from scipy._lib._util import check_random_state
-from scipy.optimize._basinhopping import Storage, BasinHoppingRunner, AdaptiveStepsize, RandomDisplacement, MinimizerWrapper, Metropolis
+from scipy.optimize._basinhopping import (
+    AdaptiveStepsize,
+    BasinHoppingRunner,
+    Metropolis,
+    MinimizerWrapper,
+    RandomDisplacement,
+)
 
 
-def basinhopping_ipopt(func, x0, niter=100, T=1.0, stepsize=0.5,
-                 minimizer_kwargs=None, take_step=None, accept_test=None,
-                 callback=None, interval=50, disp=False, niter_success=None,
-                 seed=None, *, target_accept_rate=0.5, stepwise_factor=0.9):
-    """This is a version of scipy.optimize.basinhopping that makes use of 
+def basinhopping_ipopt(
+    func,
+    x0,
+    niter=100,
+    T=1.0,
+    stepsize=0.5,
+    minimizer_kwargs=None,
+    take_step=None,
+    accept_test=None,
+    callback=None,
+    interval=50,
+    disp=False,
+    niter_success=None,
+    seed=None,
+    *,
+    target_accept_rate=0.5,
+    stepwise_factor=0.9
+):
+    """This is a version of scipy.optimize.basinhopping that makes use of
     cyipopt.minimize_ipopt instead of scipy.optimize.minimize
-    
+
     Args:
     func : callable ``f(x, *args)``
         Function to be optimized.  ``args`` can be passed as an optional item
@@ -91,7 +110,7 @@ def basinhopping_ipopt(func, x0, niter=100, T=1.0, stepsize=0.5,
         The `stepsize` is multiplied or divided by this stepwise factor upon
         each update. Range is (0, 1). Default is 0.9.
         .. versionadded:: 1.8.0
-    
+
     Returns:
     res : OptimizeResult
         The optimization result represented as a ``OptimizeResult`` object.
@@ -102,10 +121,10 @@ def basinhopping_ipopt(func, x0, niter=100, T=1.0, stepsize=0.5,
         object and can be accessed through the ``lowest_optimization_result``
         attribute.  See `OptimizeResult` for a description of other attributes.
     """
-    if target_accept_rate <= 0. or target_accept_rate >= 1.:
-        raise ValueError('target_accept_rate has to be in range (0, 1)')
-    if stepwise_factor <= 0. or stepwise_factor >= 1.:
-        raise ValueError('stepwise_factor has to be in range (0, 1)')
+    if target_accept_rate <= 0.0 or target_accept_rate >= 1.0:
+        raise ValueError("target_accept_rate has to be in range (0, 1)")
+    if stepwise_factor <= 0.0 or stepwise_factor >= 1.0:
+        raise ValueError("stepwise_factor has to be in range (0, 1)")
 
     x0 = np.array(x0)
 
@@ -115,8 +134,7 @@ def basinhopping_ipopt(func, x0, niter=100, T=1.0, stepsize=0.5,
     # set up minimizer
     if minimizer_kwargs is None:
         minimizer_kwargs = dict()
-    wrapped_minimizer = MinimizerWrapper(minimize_ipopt, func,
-                                         **minimizer_kwargs)
+    wrapped_minimizer = MinimizerWrapper(minimize_ipopt, func, **minimizer_kwargs)
 
     # set up step-taking algorithm
     if take_step is not None:
@@ -126,19 +144,24 @@ def basinhopping_ipopt(func, x0, niter=100, T=1.0, stepsize=0.5,
         # take_step.stepsize
         if hasattr(take_step, "stepsize"):
             take_step_wrapped = AdaptiveStepsize(
-                take_step, interval=interval,
+                take_step,
+                interval=interval,
                 accept_rate=target_accept_rate,
                 factor=stepwise_factor,
-                verbose=disp)
+                verbose=disp,
+            )
         else:
             take_step_wrapped = take_step
     else:
         # use default
         displace = RandomDisplacement(stepsize=stepsize, random_gen=rng)
-        take_step_wrapped = AdaptiveStepsize(displace, interval=interval,
-                                             accept_rate=target_accept_rate,
-                                             factor=stepwise_factor,
-                                             verbose=disp)
+        take_step_wrapped = AdaptiveStepsize(
+            displace,
+            interval=interval,
+            accept_rate=target_accept_rate,
+            factor=stepwise_factor,
+            verbose=disp,
+        )
 
     # set up accept tests
     accept_tests = []
@@ -154,8 +177,9 @@ def basinhopping_ipopt(func, x0, niter=100, T=1.0, stepsize=0.5,
     if niter_success is None:
         niter_success = niter + 2
 
-    bh = BasinHoppingRunner(x0, wrapped_minimizer, take_step_wrapped,
-                            accept_tests, disp=disp)
+    bh = BasinHoppingRunner(
+        x0, wrapped_minimizer, take_step_wrapped, accept_tests, disp=disp
+    )
 
     # The wrapped minimizer is called once during construction of
     # BasinHoppingRunner, so run the callback
@@ -164,8 +188,7 @@ def basinhopping_ipopt(func, x0, niter=100, T=1.0, stepsize=0.5,
 
     # start main iteration loop
     count, i = 0, 0
-    message = ["requested number of basinhopping iterations completed"
-               " successfully"]
+    message = ["requested number of basinhopping iterations completed" " successfully"]
     for i in range(niter):
         new_global_min = bh.one_cycle()
 
@@ -174,8 +197,9 @@ def basinhopping_ipopt(func, x0, niter=100, T=1.0, stepsize=0.5,
             val = callback(bh.xtrial, bh.energy_trial, bh.accept)
             if val is not None:
                 if val:
-                    message = ["callback function requested stop early by"
-                               "returning True"]
+                    message = [
+                        "callback function requested stop early by" "returning True"
+                    ]
                     break
 
         count += 1

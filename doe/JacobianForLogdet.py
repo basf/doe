@@ -17,12 +17,12 @@ class JacobianForLogdet:
     the second part can be formulated in a simplified way. It is built up with n_experiment
     blocks of the same structure which is represended by the attribute jacobian_building_block.
 
-    A nice derivation for the "first part" of the jacobian can be found here 
+    A nice derivation for the "first part" of the jacobian can be found here
     https://angms.science/doc/LA/logdet.pdf.
     The second part consists of the partial derivatives of the model terms with
     respect to the inputs. We denote the value of the i-th model term from the j-th experiment
     with y_ij and the i-th input value of the j-th experiment with x_ij. N stands for the number
-    of model terms, n for the number of input terms and M for the number of experiments. 
+    of model terms, n for the number of input terms and M for the number of experiments.
     Here, we only consider models up to second order, but the computation can easily be extended
     for higher-ordermodels.
 
@@ -30,15 +30,15 @@ class JacobianForLogdet:
     single model term and experiment with respect to every single input and experiment. We could write
     this in one large matrix and multiply the first part of the gradient as a long vector from the right
     side.
-    But because of the structure of the problem we can do the same computation with much smaller 
+    But because of the structure of the problem we can do the same computation with much smaller
     matrices:
     First, we write the first part of the jacobian as the matrix (df/dy_ij)_ij where i goes from 1 to N
     and j goes from 1 to M.
 
     Second, we compute a rank 3 tensor (K_kij)_kij. k goes from 1 to M, i from 1 to n and j from 1 to N.
-    For each k (K_kij)_ij contains the partial derivatives (dy_jk/dx_ik)_ij. Note that the values of the 
-    entries of (dy_jk/dx_ik)_ij only depend on the input values of the k-th experiment. The function 
-    default_jacobian_building_block implements the computation of these matrices/"building blocks". 
+    For each k (K_kij)_ij contains the partial derivatives (dy_jk/dx_ik)_ij. Note that the values of the
+    entries of (dy_jk/dx_ik)_ij only depend on the input values of the k-th experiment. The function
+    default_jacobian_building_block implements the computation of these matrices/"building blocks".
 
     Then, we notice that the model term values of the j-th experiment only depend on the input values of
     the j-th experiment. Thus, to compute the partial derivative df/dx_ik we only have to compute the euclidian
@@ -52,7 +52,7 @@ class JacobianForLogdet:
         model: Formula,
         n_experiments: int,
         jacobian_building_block: Optional[Callable] = None,
-        delta: Optional[float] = 1e-3,
+        delta: Optional[float] = 1e-7,
     ) -> None:
         """
         Args:

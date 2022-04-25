@@ -1,5 +1,5 @@
 import warnings
-from typing import Callable, Optional, Union, Dict
+from typing import Callable, Dict, Optional, Union
 
 import numpy as np
 import opti
@@ -8,26 +8,29 @@ from cyipopt import minimize_ipopt
 from formulaic import Formula
 from numba import jit
 from scipy.optimize._minimize import standardize_constraints
-from scipy.optimize import minimize
 
-from doe.design import constraints_as_scipy_constraints, get_formula_from_string, n_ignore_eigvals, get_callback
-from doe.JacobianForLogdet import JacobianForLogdet
 from doe.basinhopping_ipopt import basinhopping_ipopt
+from doe.design import (
+    constraints_as_scipy_constraints,
+    get_callback,
+    get_formula_from_string,
+    n_ignore_eigvals,
+)
+from doe.JacobianForLogdet import JacobianForLogdet
 
 
-#TODO: testen
-#TODO: ggf durch np.linalg.det oder np.linalg.slogdet ersetzen --> bessere laufzeit ab ca. n=1000
+# TODO: ggf durch np.linalg.det oder np.linalg.slogdet ersetzen --> bessere laufzeit ab ca. n=1000
 @jit(nopython=True)
-def logD(A: np.ndarray, delta: float = 1e-3) -> float:
+def logD(A: np.ndarray, delta: float = 1e-7) -> float:
     """Computes the sum of the log of A.T @ A ignoring the smallest num_ignore_eigvals eigenvalues."""
     eigvals = np.linalg.eigvalsh(A.T @ A + delta * np.eye(A.shape[1]))
     return np.sum(np.log(eigvals))
 
-#TODO: testen
+
 def get_objective(
     problem: opti.Problem,
     model_type: Union[str, Formula],
-    delta: float = 1e-3,
+    delta: float = 1e-7,
 ) -> Callable:
     """Returns a function that computes the objective value.
 
@@ -41,7 +44,9 @@ def get_objective(
 
     """
     D = problem.n_inputs
-    model_formula = get_formula_from_string(problem=problem, model_type=model_type, rhs_only=True)
+    model_formula = get_formula_from_string(
+        problem=problem, model_type=model_type, rhs_only=True
+    )
 
     # define objective function
     def objective(x):
@@ -62,7 +67,7 @@ def find_local_max_ipopt(
     model_type: Union[str, Formula],
     n_experiments: Optional[int] = None,
     tol: float = 1e-3,
-    delta: float = 1e-3,
+    delta: float = 1e-7,
     disp: int = 0,
     maxiter: int = 100,
 ) -> pd.DataFrame:
@@ -79,15 +84,17 @@ def find_local_max_ipopt(
         maxiter (int): maximum number of iterations. Default value is 100.
 
     Returns:
-        A pd.DataFrame object containing the best found input for the experiments. This is only a 
+        A pd.DataFrame object containing the best found input for the experiments. This is only a
         local optimum.
 
     """
 
     D = problem.n_inputs
-    model_formula = get_formula_from_string(problem=problem, model_type=model_type, rhs_only=True)
+    model_formula = get_formula_from_string(
+        problem=problem, model_type=model_type, rhs_only=True
+    )
 
-    #compute required number of experiments
+    # compute required number of experiments
     n_experiments_min = (
         len(model_formula.terms) + 3 - n_ignore_eigvals(problem, model_formula)
     )
@@ -132,7 +139,7 @@ def find_local_max_ipopt(
     return A
 
 
-#TODO: testen
+# TODO: testen
 def optimal_design(
     problem: opti.Problem,
     model_type: Union[str, Formula],
@@ -140,9 +147,9 @@ def optimal_design(
     n_max_min_found: int = 1e2,
     n_max_no_change: int = 10,
     tol: float = 1e-3,
-    delta: float = 1e-3,
+    delta: float = 1e-7,
     minimizer_kwargs: Dict = {},
-    jacobian_building_block: Optional[Callable] =None,
+    jacobian_building_block: Optional[Callable] = None,
     verbose=False,
 ) -> pd.DataFrame:
     """Generate a D-optimal design for a given problem assuming a linear model.
@@ -166,9 +173,11 @@ def optimal_design(
     """
     # TODO: unterstützung für categorical inputs
     D = problem.n_inputs
-    model_formula = get_formula_from_string(model_type=model_type, problem=problem, rhs_only=True)
+    model_formula = get_formula_from_string(
+        model_type=model_type, problem=problem, rhs_only=True
+    )
 
-    #compute required number of experiments
+    # compute required number of experiments
     n_experiments_min = (
         len(model_formula.terms) + 3 - n_ignore_eigvals(problem, model_formula)
     )
@@ -183,7 +192,13 @@ def optimal_design(
     objective = get_objective(problem, model_type, delta=delta)
 
     # get jacobian
-    J = JacobianForLogdet(problem, model_formula, n_experiments, delta=delta, jacobian_building_block=jacobian_building_block)
+    J = JacobianForLogdet(
+        problem,
+        model_formula,
+        n_experiments,
+        delta=delta,
+        jacobian_building_block=jacobian_building_block,
+    )
 
     # write constraints as scipy constraints
     constraints = constraints_as_scipy_constraints(problem, n_experiments, tol)
@@ -214,10 +229,10 @@ def optimal_design(
     # initial values
     x0 = problem.sample_inputs(n_experiments).values.reshape(-1)
 
-    #prepare minimizer kwargs
+    # prepare minimizer kwargs
     _minimizer_kwargs = {
         "method": method,
-        "options": {"maxiter": 100, "disp":0},
+        "options": {"maxiter": 100, "disp": 0},
     }
 
     for k in minimizer_kwargs.keys():
@@ -226,7 +241,6 @@ def optimal_design(
     _minimizer_kwargs["jac"] = J.jacobian
     _minimizer_kwargs["constraints"] = standardize_constraints(constraints, x0, method)
     _minimizer_kwargs["bounds"] = [(p.bounds) for p in problem.inputs] * n_experiments
-
 
     # do the optimization
     result = basinhopping_ipopt(
@@ -244,21 +258,21 @@ def optimal_design(
     return A
 
 
-ndim = 15
+# ndim = 15
 
-problem = opti.Problem(
-    inputs = opti.Parameters([opti.Continuous(f"x{i+1}", [0, 1]) for i in range(ndim)]),
-    outputs = [opti.Continuous("y")],
-    constraints = [opti.LinearEquality(names=[f"x{i+1}" for i in range(ndim)], rhs=1)] 
-#    + [opti.LinearInequality(names=[f"x{i+1}"], lhs=[1], rhs=1) for i in range(ndim)]
-#    + [opti.LinearInequality(names=[f"x{i+1}"], lhs=[-1], rhs=0) for i in range(ndim)]
-)
+# problem = opti.Problem(
+#     inputs = opti.Parameters([opti.Continuous(f"x{i+1}", [0, 1]) for i in range(ndim)]),
+#     outputs = [opti.Continuous("y")],
+#     constraints = [opti.LinearEquality(names=[f"x{i+1}" for i in range(ndim)], rhs=1)]
+# #    + [opti.LinearInequality(names=[f"x{i+1}"], lhs=[1], rhs=1) for i in range(ndim)]
+# #    + [opti.LinearInequality(names=[f"x{i+1}"], lhs=[-1], rhs=0) for i in range(ndim)]
+# )
 
 
-import time
-#np.random.seed(1)
+# import time
+# #np.random.seed(1)
 
-t = time.time()
-X = find_local_max_ipopt(problem, "fully-quadratic", disp=5, maxiter=500)
-print(time.time()-t)
-print(np.round(X,2))
+# t = time.time()
+# X = find_local_max_ipopt(problem, "fully-quadratic", disp=5, maxiter=500)
+# print(time.time()-t)
+# print(np.round(X,2))
