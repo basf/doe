@@ -8,7 +8,6 @@ import scipy as sp
 from formulaic import Formula
 
 
-# TODO: testen
 class JacobianForLogdet:
     """A class representing the jacobian/gradient of logdet(X.T@X) w.r.t. the inputs.
     It can be divided into two parts, one for logdet(X.T@X) w.r.t. X (there is a simple
@@ -120,7 +119,6 @@ class JacobianForLogdet:
         return J.flatten()
 
 
-# TODO: testen
 def default_jacobian_building_block(
     vars: List[str], model_terms: List[str]
 ) -> Callable:

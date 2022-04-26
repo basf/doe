@@ -66,7 +66,7 @@ def find_local_max_ipopt(
     tol: float = 1e-3,
     delta: float = 1e-7,
     disp: int = 0,
-    maxiter: int = 100,
+    maxiter: int = 500,
 ) -> pd.DataFrame:
     """Function computing a d-optimal design" for a given opti problem and model.
 
@@ -91,16 +91,45 @@ def find_local_max_ipopt(
         problem=problem, model_type=model_type, rhs_only=True
     )
 
-    # compute required number of experiments
-    n_experiments_min = (
-        len(model_formula.terms) + 3 - n_zero_eigvals(problem, model_formula)
-    )
-    if n_experiments is None:
-        n_experiments = n_experiments_min
-    elif n_experiments < n_experiments_min:
-        warnings.warn(
-            f"The minimum number of experiments is {n_experiments_min}, but the current setting is n_experiments={n_experiments}."
+    # initial values and required number of experiments
+    try:
+        n_experiments_min = (
+            len(model_formula.terms) + 3 - n_zero_eigvals(problem, model_formula)
         )
+        if n_experiments is None:
+            n_experiments = n_experiments_min
+        elif n_experiments < n_experiments_min:
+            warnings.warn(
+                f"The minimum number of experiments is {n_experiments_min}, but the current setting is n_experiments={n_experiments}."
+            )
+        x0 = problem.sample_inputs(n_experiments).values.reshape(-1)
+
+    except Exception:
+        # in case of exceptions only consider linear constraints
+        warnings.warn(
+            "Sampling of points fulfilling this problem's constraints is not implemented."
+        )
+
+        _constraints = []
+        for c in problem.constraints:
+            if isinstance(c, opti.LinearEquality) or isinstance(
+                c, opti.LinearInequality
+            ):
+                _constraints.append(c)
+        _problem = opti.Problem(
+            inputs=problem.inputs, outputs=problem.outputs, constraints=_constraints
+        )
+
+        n_experiments_min = (
+            len(model_formula.terms) + 3 - n_zero_eigvals(_problem, model_formula)
+        )
+        if n_experiments is None:
+            n_experiments = n_experiments_min
+        elif n_experiments < n_experiments_min:
+            warnings.warn(
+                f"The minimum number of experiments is {n_experiments_min}, but the current setting is n_experiments={n_experiments}."
+            )
+        x0 = _problem.sample_inputs(n_experiments).values.reshape(-1)
 
     # get objective function
     objective = get_objective(problem, model_type, delta=delta)
@@ -114,9 +143,6 @@ def find_local_max_ipopt(
     # method used
     # TODO: Eigentlich überflüssig hier, oder? --> rausnehmen
     method = "SLSQP"
-
-    # initial values
-    x0 = problem.sample_inputs(n_experiments).values.reshape(-1)
 
     # do the optimization
     result = minimize_ipopt(
