@@ -119,7 +119,6 @@ class JacobianForLogdet:
         return J.flatten()
 
 
-# TODO: 3. Ordnung testen
 def default_jacobian_building_block(
     vars: List[str], model_terms: List[str]
 ) -> Callable:
