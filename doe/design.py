@@ -17,12 +17,10 @@ from doe.utils import (
 )
 
 
-# TODO: ggf durch np.linalg.det oder np.linalg.slogdet ersetzen --> bessere laufzeit ab ca. n=1000
 @jit(nopython=True)
 def logD(A: np.ndarray, delta: float = 1e-7) -> float:
     """Computes the sum of the log of A.T @ A ignoring the smallest num_ignore_eigvals eigenvalues."""
-    eigvals = np.linalg.eigvalsh(A.T @ A + delta * np.eye(A.shape[1]))
-    return np.sum(np.log(eigvals))
+    return np.linalg.slogdet(A.T @ A + delta * np.eye(A.shape[1]))[1]
 
 
 def get_objective(
@@ -140,17 +138,13 @@ def find_local_max_ipopt(
     # write constraints as scipy constraints
     constraints = constraints_as_scipy_constraints(problem, n_experiments, tol)
 
-    # method used
-    # TODO: Eigentlich überflüssig hier, oder? --> rausnehmen
-    method = "SLSQP"
-
     # do the optimization
     result = minimize_ipopt(
         objective,
         x0=x0,
-        method=method,
         bounds=[(p.bounds) for p in problem.inputs] * n_experiments,
-        constraints=standardize_constraints(constraints, x0, method),
+        # "SLSQP" has no deeper meaning here and just ensures correct constraint standardization
+        constraints=standardize_constraints(constraints, x0, "SLSQP"),
         options={"maxiter": maxiter, "disp": disp},
         jac=J.jacobian,
     )
