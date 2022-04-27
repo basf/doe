@@ -62,13 +62,242 @@ def test_default_jacobian_building_block():
     assert np.allclose(B, jacobian_building_block(x))
 
     # unsupported model
-    model_terms = np.array(Formula("{x1**3} - 1").terms, dtype=str)
+    model_terms = np.array(Formula("{x1**4} - 1").terms, dtype=str)
     x = [1, 2, 3]
 
     jacobian_building_block = default_jacobian_building_block(vars, model_terms)
 
     with pytest.raises(KeyError):
         jacobian_building_block(x)
+
+    # fully cubic model
+    vars = ["x1", "x2", "x3", "x4", "x5"]
+    n_vars = 5
+
+    formula = ""
+    for name in vars:
+        formula += name + " + "
+
+    for name in vars:
+        formula += "{" + name + "**2} + "
+    for i in range(n_vars):
+        for j in range(i + 1, n_vars):
+            term = str(Formula(vars[j] + ":" + vars[i] + "-1").terms[0]) + " + "
+            formula += term
+
+    for name in vars:
+        formula += "{" + name + "**3} + "
+    for i in range(n_vars):
+        for j in range(i + 1, n_vars):
+            for k in range(j + 1, n_vars):
+                term = (
+                    str(
+                        Formula(vars[k] + ":" + vars[j] + ":" + vars[i] + "-1").terms[0]
+                    )
+                    + " + "
+                )
+                formula += term
+    formula = Formula(formula[:-3])
+    model_terms = np.array(formula.terms, dtype=str)
+    x = [1, 2, 3, 4, 5]
+    jacobian_building_block = default_jacobian_building_block(vars, model_terms)
+
+    B = np.array(
+        [
+            [
+                0.0,
+                1.0,
+                2.0,
+                3.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                2.0,
+                3.0,
+                4.0,
+                5.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                6.0,
+                8.0,
+                10.0,
+                12.0,
+                15.0,
+                20.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+            ],
+            [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                4.0,
+                12.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                3.0,
+                4.0,
+                5.0,
+                0.0,
+                0.0,
+                0.0,
+                3.0,
+                4.0,
+                5.0,
+                0.0,
+                0.0,
+                0.0,
+                12.0,
+                15.0,
+                20.0,
+                0.0,
+            ],
+            [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                6.0,
+                27.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                2.0,
+                0.0,
+                0.0,
+                4.0,
+                5.0,
+                0.0,
+                2.0,
+                0.0,
+                0.0,
+                4.0,
+                5.0,
+                0.0,
+                8.0,
+                10.0,
+                0.0,
+                20.0,
+            ],
+            [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                8.0,
+                48.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                2.0,
+                0.0,
+                3.0,
+                0.0,
+                5.0,
+                0.0,
+                2.0,
+                0.0,
+                3.0,
+                0.0,
+                5.0,
+                6.0,
+                0.0,
+                10.0,
+                15.0,
+            ],
+            [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                10.0,
+                75.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                2.0,
+                0.0,
+                3.0,
+                4.0,
+                0.0,
+                0.0,
+                2.0,
+                0.0,
+                3.0,
+                4.0,
+                0.0,
+                6.0,
+                8.0,
+                12.0,
+            ],
+        ]
+    )
+
+    assert np.allclose(B, jacobian_building_block(x))
 
 
 def test_JacobianForLogdet_instantiation():

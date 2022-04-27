@@ -119,6 +119,7 @@ class JacobianForLogdet:
         return J.flatten()
 
 
+# TODO: 3. Ordnung testen
 def default_jacobian_building_block(
     vars: List[str], model_terms: List[str]
 ) -> Callable:
@@ -138,12 +139,23 @@ def default_jacobian_building_block(
     terms = ["1"]
     for name in vars:
         terms.append(name)
+
     for name in vars:
         terms.append(name + "**2")
     for i in range(n_vars):
         for j in range(i + 1, n_vars):
             term = str(Formula(vars[j] + ":" + vars[i] + "-1").terms[0])
             terms.append(term)
+
+    for name in vars:
+        terms.append(name + "**3")
+    for i in range(n_vars):
+        for j in range(i + 1, n_vars):
+            for k in range(j + 1, n_vars):
+                term = str(
+                    Formula(vars[k] + ":" + vars[j] + ":" + vars[i] + "-1").terms[0]
+                )
+                terms.append(term)
 
     def jacobian_building_block(x: np.ndarray) -> np.ndarray:
         """Computes the jacobian building block for a single experiment with inputs x."""
@@ -158,13 +170,26 @@ def default_jacobian_building_block(
         # derivatives of quadratic terms
         B[:, n_vars + 1 : 2 * n_vars + 1] = 2 * np.diag(x)
 
-        # derivatives of interaction terms
+        # derivatives of second order interaction terms
         col = 2 * n_vars + 1
         for (i, name) in enumerate(vars[:-1]):
             n_terms = len(vars[i + 1 :])
             B[i, col : col + n_terms] = x[i + 1 :]
             B[i + 1 :, col : col + n_terms] = x[i] * np.eye(n_terms)
             col += n_terms
+
+        # derivatives of third order terms
+        B[:, col : col + n_vars] = 3 * np.diag(x**2)
+        col += n_vars
+
+        # derivatives of third order interaction terms
+        for (i, name) in enumerate(vars[:-2]):
+            for j in range(i + 1, n_vars - 1):
+                n_terms = len(vars[j + 1 :])
+                B[i, col : col + n_terms] = x[j] * x[j + 1 :]
+                B[j, col : col + n_terms] = x[i] * x[j + 1 :]
+                B[j + 1 :, col : col + n_terms] = x[i] * x[j] * np.eye(n_terms)
+                col += n_terms
 
         return pd.DataFrame(B, columns=terms)[model_terms].to_numpy()
 
