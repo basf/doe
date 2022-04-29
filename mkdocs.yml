@@ -1,0 +1,46 @@
+site_name: doe
+site_url: https://example.com
+repo_name: BayesOpt/doe   #TODO: besserer name?
+repo_url: https://gitlab.roqs.basf.net/bayesopt/doe
+
+nav:
+  - index.md
+  - Getting started:
+    - Install: install.md
+    - Tutorial: tutorial.md
+#  - Examples:
+#    #TODO -beispiele
+#  - API Reference:
+#    #TODO beispiele
+
+
+theme:
+  name: material
+  repo_url: example.de #TODO: Wo hin?
+  logo: assets/logo.png
+  favicon: assets/logo.png
+  features:
+    toc.integrate
+
+plugins:
+  - search
+
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - admonition
+  - pymdownx.highlight:
+      use_pygments: true
+
+extra_css:
+  - stylesheets/style.css 
+
+extra_javascript:
+  # math support, https://squidfunk.github.io/mkdocs-material/reference/mathjax/
+  # - javascripts/mathjax.js  # when enabled, formulas come with a vertical scrollbar
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
