@@ -63,6 +63,7 @@ def find_local_max_ipopt(
     delta: float = 1e-7,
     disp: int = 0,
     maxiter: int = 500,
+    jacobian_building_block: Callable = None,
 ) -> pd.DataFrame:
     """Function computing a d-optimal design" for a given opti problem and model.
 
@@ -75,6 +76,8 @@ def find_local_max_ipopt(
         delta (float): Regularization parameter. Default value is 1e-3.
         disp (int): Verbosity parameter for IPOPT. Valid range is 0 <= disp <= 12. Default value is 0.
         maxiter (int): maximum number of iterations. Default value is 100.
+        jacobian_building_block (Callable): Only needed for models of higher order than 3. derivatives
+            of each model term with respect to each input variable.
 
     Returns:
         A pd.DataFrame object containing the best found input for the experiments. This is only a
@@ -131,7 +134,13 @@ def find_local_max_ipopt(
     objective = get_objective(problem, model_type, delta=delta)
 
     # get jacobian
-    J = JacobianForLogdet(problem, model_formula, n_experiments, delta=delta)
+    J = JacobianForLogdet(
+        problem,
+        model_formula,
+        n_experiments,
+        delta=delta,
+        jacobian_building_block=jacobian_building_block,
+    )
 
     # write constraints as scipy constraints
     constraints = constraints_as_scipy_constraints(problem, n_experiments, tol)
