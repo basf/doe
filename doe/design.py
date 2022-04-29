@@ -6,7 +6,6 @@ import opti
 import pandas as pd
 from cyipopt import minimize_ipopt
 from formulaic import Formula
-from numba import jit
 from scipy.optimize._minimize import standardize_constraints
 
 from doe.JacobianForLogdet import JacobianForLogdet
@@ -17,7 +16,6 @@ from doe.utils import (
 )
 
 
-@jit(nopython=True)
 def logD(A: np.ndarray, delta: float = 1e-7) -> float:
     """Computes the sum of the log of A.T @ A ignoring the smallest num_ignore_eigvals eigenvalues."""
     return np.linalg.slogdet(A.T @ A + delta * np.eye(A.shape[1]))[1]
