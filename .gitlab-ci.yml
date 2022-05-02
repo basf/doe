@@ -12,8 +12,8 @@ style-check:
   stage: check
   script:
     - pip3 install black isort flake8
-    - black --check pyreto test
-    - flake8 --verbose pyreto test
+    - black --check doe test
+    - flake8 --verbose doe test
     - isort . --check-only --verbose
 
 # test:
