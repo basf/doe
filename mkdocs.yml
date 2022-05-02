@@ -8,7 +8,7 @@ nav:
   - Getting started:
     - Install: install.md
     - Tutorial: tutorial.md
-  - API Reference:
+  - Code Reference:
     - ref-design.md
     - ref-JacobianForLogdet.md
     - ref-utils.md

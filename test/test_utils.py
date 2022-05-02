@@ -200,9 +200,9 @@ def test_constraints_as_scipy_constraints():
         assert len(c.lb) == n_experiments
         assert len(c.ub) == n_experiments
 
-    A = np.array([[1, 1, 1, 0, 0, 0], [0, 0, 0, 1, 1, 1]])
-    lb = np.array([0.999, 0.999])
-    ub = np.array([1.001, 1.001])
+    A = np.array([[1, 1, 1, 0, 0, 0], [0, 0, 0, 1, 1, 1]]) / np.sqrt(3)
+    lb = np.array([1, 1]) / np.sqrt(3) - 0.001
+    ub = np.array([1, 1]) / np.sqrt(3) + 0.001
     assert np.allclose(constraints[0].A, A)
     assert np.allclose(constraints[0].lb, lb)
     assert np.allclose(constraints[0].ub, ub)

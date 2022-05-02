@@ -1,5 +1,5 @@
 import warnings
-from typing import Callable, Optional, Union
+from typing import Callable, Dict, Optional, Union
 
 import numpy as np
 import opti
@@ -61,8 +61,7 @@ def find_local_max_ipopt(
     n_experiments: Optional[int] = None,
     tol: float = 1e-3,
     delta: float = 1e-7,
-    disp: int = 0,
-    maxiter: int = 500,
+    ipopt_options: Dict = {},
     jacobian_building_block: Callable = None,
 ) -> pd.DataFrame:
     """Function computing a d-optimal design" for a given opti problem and model.
@@ -74,8 +73,7 @@ def find_local_max_ipopt(
             the number of model terms + 3.
         tol (float): Tolerance for equality/NChooseK constraint violation. Default value is 1e-3.
         delta (float): Regularization parameter. Default value is 1e-3.
-        disp (int): Verbosity parameter for IPOPT. Valid range is 0 <= disp <= 12. Default value is 0.
-        maxiter (int): maximum number of iterations. Default value is 100.
+        ipopt_options (Dict): options for IPOPT. For more information see [this link](https://coin-or.github.io/Ipopt/OPTIONS.html)
         jacobian_building_block (Callable): Only needed for models of higher order than 3. derivatives
             of each model term with respect to each input variable.
 
@@ -145,6 +143,11 @@ def find_local_max_ipopt(
     # write constraints as scipy constraints
     constraints = constraints_as_scipy_constraints(problem, n_experiments, tol)
 
+    # set ipopt options
+    _ipopt_options = {"maxiter": 500, "disp": 0}
+    for key in ipopt_options.keys():
+        _ipopt_options[key] = ipopt_options[key]
+
     # do the optimization
     result = minimize_ipopt(
         objective,
@@ -152,7 +155,7 @@ def find_local_max_ipopt(
         bounds=[(p.bounds) for p in problem.inputs] * n_experiments,
         # "SLSQP" has no deeper meaning here and just ensures correct constraint standardization
         constraints=standardize_constraints(constraints, x0, "SLSQP"),
-        options={"maxiter": maxiter, "disp": disp},
+        options=_ipopt_options,
         jac=J.jacobian,
     )
 

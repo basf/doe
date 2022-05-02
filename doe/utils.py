@@ -126,11 +126,14 @@ def constraints_as_scipy_constraints(
     for c in problem.constraints:
         if isinstance(c, opti.LinearEquality):
             # write lower/upper bound as vector
-            lb = np.ones(n_experiments) * (c.rhs - tol)
-            ub = np.ones(n_experiments) * (c.rhs + tol)
+            lb = np.ones(n_experiments) * (c.rhs / np.linalg.norm(c.lhs) - tol)
+            ub = np.ones(n_experiments) * (c.rhs / np.linalg.norm(c.lhs) + tol)
 
             # write constraint as matrix
-            lhs = {c.names[i]: c.lhs[i] for i in range(len(c.names))}
+            lhs = {
+                c.names[i]: c.lhs[i] / np.linalg.norm(c.lhs)
+                for i in range(len(c.names))
+            }
             row = np.zeros(D)
             for i, name in enumerate(problem.inputs.names):
                 if name in lhs.keys():
@@ -145,10 +148,13 @@ def constraints_as_scipy_constraints(
         elif isinstance(c, opti.LinearInequality):
             # write upper/lowe bound as vector
             lb = -np.inf * np.ones(n_experiments)
-            ub = np.ones(n_experiments) * c.rhs
+            ub = np.ones(n_experiments) * c.rhs / np.linalg.norm(c.lhs)
 
             # write constraint as matrix
-            lhs = {c.names[i]: c.lhs[i] for i in range(len(c.names))}
+            lhs = {
+                c.names[i]: c.lhs[i] / np.linalg.norm(c.lhs)
+                for i in range(len(c.names))
+            }
             row = np.zeros(D)
             for i, name in enumerate(problem.inputs.names):
                 if name in lhs.keys():
