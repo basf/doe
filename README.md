@@ -35,4 +35,4 @@ problem = opti.Problem(
 res = find_local_max_ipopt(problem, "linear")
 ```
 
-![constraints_local_opt](docs\assets\getting_started_constraints_local_opt.PNG)
+![constraints_local_opt](https://gitlab.roqs.basf.net/bayesopt/doe/-/tree/main/docs/assets/getting_started_constraints_local_opt.PNG)
