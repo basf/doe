@@ -147,6 +147,8 @@ def find_local_max_ipopt(
     _ipopt_options = {"maxiter": 500, "disp": 0}
     for key in ipopt_options.keys():
         _ipopt_options[key] = ipopt_options[key]
+    if _ipopt_options["disp"] > 12:
+        _ipopt_options["disp"] = 0
 
     # do the optimization
     result = minimize_ipopt(
@@ -158,6 +160,11 @@ def find_local_max_ipopt(
         options=_ipopt_options,
         jac=J.jacobian,
     )
+
+    # exit status messages
+    if ipopt_options["disp"] > 12:
+        for key in ["fun", "message", "nfev", "nit", "njev", "status", "success"]:
+            print(key + ":", result[key])
 
     A = pd.DataFrame(
         result["x"].reshape(n_experiments, D), columns=problem.inputs.names
