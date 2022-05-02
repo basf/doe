@@ -35,7 +35,6 @@ any role for the functionality of doe. Now we hand over the problem to doe's <co
 
 ```python
 import doe
-import matplotlib.pyplot as plt
 
 res = doe.find_local_max_ipopt(
     problem=problem,
