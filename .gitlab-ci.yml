@@ -1,0 +1,52 @@
+image: registry.roqs.basf.net/base-images/python:latest
+
+variables:
+  NEXUS_URL: https://nexus.roqs.basf.net/repository/python-hosted/
+
+stages:
+  - check
+  - test
+  - deploy
+
+style-check:
+  stage: check
+  script:
+    - pip3 install black isort flake8
+    - black --check pyreto test
+    - flake8 --verbose pyreto test
+    - isort . --check-only --verbose
+
+# test:
+#   stage: test
+#   script:
+#     - pip3 install .[testing]
+#     - pip3 install pytest pytest-cov coverage
+#     - pytest --cov-report term-missing --cov=pyreto test
+#     - coverage xml
+
+# deploy_nexus:
+#   stage: deploy
+#   only:
+#     - master
+#   script:
+#     - pip3 install twine setuptools wheel
+#     - export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+#     - |
+#       echo -e "[distutils]\nindex-servers = pypi\n[pypi]\nrepository: ${NEXUS_URL}\nusername: ${NEXUS_USER}\npassword: ${NEXUS_PWD}\n" > $HOME/.pypirc
+#     - python3 setup.py sdist bdist_wheel
+#     - twine upload dist/*
+#   artifacts:
+#     paths:
+#       - build/
+#       - dist/
+
+pages:
+  stage: deploy
+  script:
+  - pip3 install .
+  - pip3 install mkdocs mkdocs-material mkdocstrings
+  - mkdocs build -d public
+  artifacts:
+    paths:
+    - public
+
