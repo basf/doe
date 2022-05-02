@@ -8,6 +8,11 @@ nav:
   - Getting started:
     - Install: install.md
     - Tutorial: tutorial.md
+  - API Reference:
+    - ref-design.md
+    - ref-JacobianForLogdet.md
+    - ref-utils.md
+
 #  - Examples:
 #    #TODO -beispiele
 #  - API Reference:
@@ -24,6 +29,9 @@ theme:
 
 plugins:
   - search
+  - mkdocstrings:
+      watch:  # watch for changes when serving locally
+        - doe
 
 markdown_extensions:
   - pymdownx.arithmatex:

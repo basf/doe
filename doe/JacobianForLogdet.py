@@ -16,8 +16,7 @@ class JacobianForLogdet:
     the second part can be formulated in a simplified way. It is built up with n_experiment
     blocks of the same structure which is represended by the attribute jacobian_building_block.
 
-    A nice derivation for the "first part" of the jacobian can be found here
-    https://angms.science/doc/LA/logdet.pdf.
+    A nice derivation for the "first part" of the jacobian can be found [here](https://angms.science/doc/LA/logdet.pdf).
     The second part consists of the partial derivatives of the model terms with
     respect to the inputs. We denote the value of the i-th model term from the j-th experiment
     with y_ij and the i-th input value of the j-th experiment with x_ij. N stands for the number
