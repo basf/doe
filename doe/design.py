@@ -109,9 +109,7 @@ def find_local_max_ipopt(
 
         _constraints = []
         for c in problem.constraints:
-            if isinstance(c, opti.LinearEquality) or isinstance(
-                c, opti.LinearInequality
-            ):
+            if isinstance(c, opti.NChooseK):
                 _constraints.append(c)
         _problem = opti.Problem(
             inputs=problem.inputs, outputs=problem.outputs, constraints=_constraints
@@ -162,7 +160,7 @@ def find_local_max_ipopt(
     )
 
     # exit status messages
-    if ipopt_options["disp"] > 12:
+    if _ipopt_options[b"print_level"] > 12:
         for key in ["fun", "message", "nfev", "nit", "njev", "status", "success"]:
             print(key + ":", result[key])
 
