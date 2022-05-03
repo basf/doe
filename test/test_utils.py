@@ -4,9 +4,14 @@ import pandas as pd
 from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 from doe.utils import (
+    ConstraintWrapper,
     JacobianNChooseK,
+    a_optimality,
     constraints_as_scipy_constraints,
+    d_optimality,
+    g_efficiency,
     get_formula_from_string,
+    metrics,
     n_zero_eigvals,
 )
 
@@ -314,3 +319,118 @@ def test_JacobianNChooseK():
     for i in range(n_experiments):
         J[i, i * D : (i + 1) * D] = jac_corr[i]
     assert np.allclose(jac(x), J)
+
+
+def test_ConstraintWrapper():
+    # define problem with all types of constraints
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [0, 1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.LinearEquality(names=["x1", "x2", "x3", "x4"], rhs=1),
+            opti.LinearInequality(names=["x1", "x2", "x3", "x4"], rhs=1),
+            opti.NonlinearEquality("x1**2 + x2**2 + x3**2 + x4**2 - 1"),
+            opti.NonlinearInequality("x1**2 + x2**2 + x3**2 + x4**2 - 1"),
+            opti.NChooseK(names=["x1", "x2", "x3", "x4"], max_active=3),
+        ],
+    )
+
+    x = np.array([[1, 1, 1, 1], [0.5, 0.5, 0.5, 0.5], [3, 2, 1, 0]]).flatten()
+
+    # linear equality
+    c = ConstraintWrapper(problem.constraints[0], problem, tol=0)
+    assert np.allclose(c(x), np.array([1.5, 0.5, 2.5]))
+
+    # linear inequaity
+    c = ConstraintWrapper(problem.constraints[1], problem, tol=0)
+    assert np.allclose(c(x), np.array([1.5, 0.5, 2.5]))
+
+    # nonlinear equality
+    c = ConstraintWrapper(problem.constraints[2], problem, tol=0)
+    assert np.allclose(c(x), np.array([3, 0, 13]))
+
+    # nonlinear inequality
+    c = ConstraintWrapper(problem.constraints[3], problem, tol=0)
+    assert np.allclose(c(x), np.array([3, 0, 13]))
+
+    # nchoosek constraint
+    c = ConstraintWrapper(problem.constraints[4], problem, tol=0)
+    assert np.allclose(c(x), np.array([1, 0.5, 0]))
+
+
+def test_d_optimality():
+    # define model matrix: full rank
+    X = np.array(
+        [
+            [1, 1, 0, 0],
+            [1, 0, 1, 0],
+            [1, 0, 0, 1],
+            [1, 0, 0, 0],
+        ]
+    )
+    assert np.allclose(d_optimality(X), np.linalg.slogdet(X.T @ X)[1])
+
+    # define model matrix: not full rank
+    X = np.array(
+        [
+            [1, 1, 0, 0],
+            [1, 0, 1, 0],
+            [1, 0, 0, 1],
+            [1, 1 / 3, 1 / 3, 1 / 3],
+        ]
+    )
+    assert np.allclose(d_optimality(X), np.sum(np.log(np.linalg.eigvalsh(X.T @ X)[1:])))
+
+
+def test_a_optimality():
+    # define model matrix: full rank
+    X = np.array(
+        [
+            [1, 1, 0, 0],
+            [1, 0, 1, 0],
+            [1, 0, 0, 1],
+            [1, 0, 0, 0],
+        ]
+    )
+    assert np.allclose(a_optimality(X), np.sum(1 / (np.linalg.eigvalsh(X.T @ X))))
+
+    # define model matrix: not full rank
+    X = np.array(
+        [
+            [1, 1, 0, 0],
+            [1, 0, 1, 0],
+            [1, 0, 0, 1],
+            [1, 1 / 3, 1 / 3, 1 / 3],
+        ]
+    )
+    assert np.allclose(a_optimality(X), np.sum(1 / (np.linalg.eigvalsh(X.T @ X)[1:])))
+
+
+def test_g_efficiency():
+    # define model matrix
+    X = np.array(
+        [
+            [1, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+        ]
+    )
+    assert np.allclose(g_efficiency(X), 100)
+
+
+def test_metrics():
+    # define model matrix
+    X = np.array(
+        [
+            [1, 1, 0, 0],
+            [1, 0, 1, 0],
+            [1, 0, 0, 1],
+            [1, 0, 0, 0],
+        ]
+    )
+    d = metrics(X)
+    assert d.index[0] == "D-optimality"
+    assert d.index[1] == "A-optimality"
+    assert d.index[2] == "G-efficiency"
+    assert np.allclose(d, np.array([d_optimality(X), a_optimality(X), g_efficiency(X)]))

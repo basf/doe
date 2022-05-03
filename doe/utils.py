@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 import numpy as np
 import opti
@@ -107,7 +107,7 @@ def constraints_as_scipy_constraints(
     problem: opti.Problem,
     n_experiments: int,
     tol: float = 1e-3,
-):
+) -> List:
     """Formulates opti constraints as scipy constraints.
 
     Args:
@@ -207,7 +207,6 @@ def constraints_as_scipy_constraints(
     return constraints
 
 
-# TODO: testen
 class ConstraintWrapper:
     """Wrapper for opti constraint calls using flattened numpy arrays instead of ."""
 
@@ -296,3 +295,70 @@ class JacobianNChooseK:
             J[i, i * self.D : (i + 1) * self.D] = j[i]
 
         return J
+
+
+def d_optimality(X: np.ndarray, tol=1e-9) -> float:
+    """Compute ln(1/|X^T X|) for a model matrix X (smaller is better).
+    The covariance of the estimated model parameters for $y = X beta + epsilon $is
+    given by $Var(beta) ~ (X^T X)^{-1}$.
+    The determinant |Var| quantifies the volume of the confidence ellipsoid which is to
+    be minimized.
+    """
+    eigenvalues = np.linalg.eigvalsh(X.T @ X)
+    eigenvalues = eigenvalues[np.abs(eigenvalues) > tol]
+    return np.sum(np.log(eigenvalues))
+
+
+def a_optimality(X: np.ndarray, tol=1e-9) -> float:
+    """Compute the A-optimality for a model matrix X (smaller is better).
+    A-optimality is the sum of variances of the estimated model parameters, which is
+    the trace of the covariance matrix $X.T @ X^-1$.
+
+    F is symmetric positive definite, hence the trace of (X.T @ X)^-1 is equal to the
+    the sum of inverse eigenvalues
+    """
+    eigenvalues = np.linalg.eigvalsh(X.T @ X)
+    eigenvalues = eigenvalues[np.abs(eigenvalues) > tol]
+    return np.sum(1 / eigenvalues)
+
+
+def g_efficiency(X: np.ndarray, delta=1e-9) -> float:
+    """Compute the G-efficiency for a model matrix X.
+    G-efficiency is proportional to p/(n*d) where p is the number of model terms,
+    n is the number of runs and d is the maximum relative prediction variance over
+    the set of runs.
+    """
+
+    # number of runs and model terms
+    n, p = X.shape
+
+    # variance over set of runs
+    D = X @ np.linalg.inv(X.T @ X + delta * np.eye(p)) @ X.T
+    d = np.max(np.diag(D))
+
+    G_eff = 100 * p / (n * d)
+    return G_eff
+
+
+def metrics(X: np.ndarray, tol=1e-9, delta=1e-9) -> pd.Series:
+    """Returns a series containing D-optimality, A-optimality and G-efficiency
+    for a model matrix X
+
+    Args:
+        X (np.ndarray): model matrix for which the metrics are determined
+        tol (float): cutoff value for eigenvalues of the information matrix in
+            D- and A- optimality computation. Default value is 1e-9.
+        delta (float): regularization parameter in G-efficiency computation.
+            Default value is 1e-9
+
+    Returns:
+        A pd.Series containing the values for the three metrics.
+    """
+
+    return pd.Series(
+        {
+            "D-optimality": d_optimality(X, tol),
+            "A-optimality": a_optimality(X, tol),
+            "G-efficiency": g_efficiency(X, delta),
+        }
+    )
