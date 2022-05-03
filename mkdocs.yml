@@ -1,10 +1,11 @@
 site_name: doe
-site_url: https://example.com
-repo_name: BayesOpt/doe   #TODO: besserer name?
+site_url: https://bayesopt.docs.basf.net/doe
+repo_name: doe
 repo_url: https://gitlab.roqs.basf.net/bayesopt/doe
 
 nav:
-  - index.md
+  - BayesOpt (home): https://bayesopt.docs.basf.net
+  - Overview: index.md
   - Getting started:
     - Install: install.md
     - Tutorial: tutorial.md
@@ -12,12 +13,6 @@ nav:
     - ref-design.md
     - ref-JacobianForLogdet.md
     - ref-utils.md
-
-#  - Examples:
-#    #TODO -beispiele
-#  - API Reference:
-#    #TODO beispiele
-
 
 theme:
   name: material
