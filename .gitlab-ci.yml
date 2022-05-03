@@ -16,13 +16,13 @@ style-check:
     - flake8 --verbose doe test
     - isort . --check-only --verbose
 
-# test:
-#   stage: test
-#   script:
-#     - pip3 install .[testing]
-#     - pip3 install pytest pytest-cov coverage
-#     - pytest --cov-report term-missing --cov=pyreto test
-#     - coverage xml
+test:
+  stage: test
+  script:
+    - pip3 install .[testing]
+    - pip3 install pytest pytest-cov coverage
+    - pytest --cov-report term-missing --cov=pyreto test
+    - coverage xml
 
 # deploy_nexus:
 #   stage: deploy
