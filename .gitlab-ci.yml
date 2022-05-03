@@ -1,0 +1,78 @@
+image: registry.roqs.basf.net/base-images/python:latest
+
+variables:
+  NEXUS_URL: https://nexus.roqs.basf.net/repository/python-hosted/
+  HTTP_PROXY: http://serverproxy.basf.net:8080/
+  HTTPS_PROXY: http://serverproxy.basf.net:8080/
+  CI_REGISTRY: registry.roqs.basf.net
+  IMAGE_TAG: ${CI_REGISTRY}/${CI_REGISTRY_NAMESPACE}/ipopt:${CI_PIPELINE_ID}
+  IMAGE_LATEST: ${CI_REGISTRY}/${CI_REGISTRY_NAMESPACE}/ipopt:latest
+
+stages:
+  - check
+  - build
+  - test
+  - deploy
+
+test-variable:
+  stage: check
+  script:
+    - echo "$IMAGE_LATEST"
+
+# style-check:
+#   stage: check
+#   script:
+#     - pip3 install black isort flake8
+#     - black --check doe test
+#     - flake8 --verbose doe test
+#     - isort . --check-only --verbose
+
+build-image:
+  only:
+    - build-image
+  stage: build
+  image: registry.roqs.basf.net/docker:stable
+  tags:
+    - docker
+  script:
+    - docker login -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_TOKEN} ${CI_REGISTRY}
+    - docker build --tag $IMAGE_TAG --tag $IMAGE_LATEST --no-cache --build-arg=http_proxy="${HTTP_PROXY}" --build-arg=https_proxy="${HTTP_PROXY}" .
+    - docker push $IMAGE_TAG
+    - docker push $IMAGE_LATEST
+
+test:
+  stage: test
+  image: $IMAGE_LATEST
+  script:
+    - pip3 install .
+    - pip3 install pytest pytest-cov coverage
+    - pytest --cov-report term-missing --cov=doe test
+    - coverage xml
+
+# deploy_nexus:
+#   stage: deploy
+#   only:
+#     - master
+#   script:
+#     - pip3 install twine setuptools wheel
+#     - export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+#     - |
+#       echo -e "[distutils]\nindex-servers = pypi\n[pypi]\nrepository: ${NEXUS_URL}\nusername: ${NEXUS_USER}\npassword: ${NEXUS_PWD}\n" > $HOME/.pypirc
+#     - python3 setup.py sdist bdist_wheel
+#     - twine upload dist/*
+#   artifacts:
+#     paths:
+#       - build/
+#       - dist/
+
+pages:
+  stage: deploy
+  image: $IMAGE_LATEST
+  script:
+  - pip3 install .
+  - pip3 install mkdocs mkdocs-material mkdocstrings
+  - mkdocs build -d public
+  artifacts:
+    paths:
+    - public
+
