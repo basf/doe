@@ -2,9 +2,10 @@
 
 pyreto can be installed from [nexus.roqs.basf.net](https://developer.docs.basf.net/setup/python/#configure) (NOT YET).
 ```
-pip install doe
+pip install basf-doe
 ```
-Please make sure to have cyipopt installed. The easiest way to get this package is using
+Please make sure to have cyipopt installed. 
+On Windows with conda the easiest way to get this package is using
 ```
 conda install -c conda-forge cyipopt
 ```

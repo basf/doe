@@ -1,18 +1,24 @@
-# doe
+# DoE
 
-doe is a python package for the computation of (D-)optimal experimental designs. It uses [opti](https://basf.github.io/mopti/) for experiment specification and adding domain knowledge and [formulaic](https://matthewwardrop.github.io/formulaic/).
+DoE is a python package for generating (D-)optimal experimental designs. 
+It uses [opti](https://basf.github.io/mopti/) for specifying the design space and [formulaic](https://matthewwardrop.github.io/formulaic/) for specifying the assumed model.
+
+You can find the documentation [here](http://bayesopt.docs.basf.net/doe).
+
 
 ## Install
 
 pyreto can be installed from [nexus.roqs.basf.net](https://developer.docs.basf.net/setup/python/#configure) (NOT YET).
 ```
-pip install doe
+pip install basf-doe
 ```
-Please make sure to have cyipopt installed. The easiest way to get this package is using
+Please make sure to have cyipopt installed. 
+On Windows with conda the easiest way to get this package is using
 ```
 conda install -c conda-forge cyipopt
 ```
 See [this link](https://cyipopt.readthedocs.io/en/stable/install.html) for more information on other ways to install cyipopt.
+
 
 ## Usage
 
@@ -32,7 +38,7 @@ problem = opti.Problem(
    ]
 )
 
-res = find_local_max_ipopt(problem, "linear")
+design = find_local_max_ipopt(problem, "linear")
 ```
 
-![doe_example](https://gitlab.roqs.basf.net/bayesopt/doe/-/raw/main/docs/assets/getting_started_constraints_local_opt.PNG)
+![doe_example](docs/assets/getting_started_constraints_local_opt.PNG)

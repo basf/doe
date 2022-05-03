@@ -89,7 +89,7 @@ res = find_local_max_ipopt(problem, "linear")
 
 As expected for linear models, <code>find_local_max_ipopt</code> finds the corner points of the feasible set
 
-![constraints_local_opt](assets\getting_started_constraints_local_opt.PNG)
+![constraints_local_opt](assets/getting_started_constraints_local_opt.PNG)
 
 
 # JacobianForLogdet

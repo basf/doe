@@ -14,18 +14,13 @@ stages:
   - test
   - deploy
 
-test-variable:
+style-check:
   stage: check
   script:
-    - echo "$IMAGE_LATEST"
-
-# style-check:
-#   stage: check
-#   script:
-#     - pip3 install black isort flake8
-#     - black --check doe test
-#     - flake8 --verbose doe test
-#     - isort . --check-only --verbose
+    - pip3 install black isort flake8
+    - black --check doe test
+    - flake8 --verbose doe test
+    - isort . --check-only --verbose
 
 build-image:
   only:
@@ -49,23 +44,23 @@ test:
     - pytest --cov-report term-missing --cov=doe test
     - coverage xml
 
-# deploy_nexus:
-#   stage: deploy
-#   only:
-#     - master
-#   script:
-#     - pip3 install twine setuptools wheel
-#     - export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-#     - |
-#       echo -e "[distutils]\nindex-servers = pypi\n[pypi]\nrepository: ${NEXUS_URL}\nusername: ${NEXUS_USER}\npassword: ${NEXUS_PWD}\n" > $HOME/.pypirc
-#     - python3 setup.py sdist bdist_wheel
-#     - twine upload dist/*
-#   artifacts:
-#     paths:
-#       - build/
-#       - dist/
+deploy-nexus:
+  stage: deploy
+  only:
+    - main
+  script:
+    - pip3 install twine setuptools wheel
+    - export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+    - |
+      echo -e "[distutils]\nindex-servers = pypi\n[pypi]\nrepository: ${NEXUS_URL}\nusername: ${NEXUS_USER}\npassword: ${NEXUS_PWD}\n" > $HOME/.pypirc
+    - python3 setup.py sdist bdist_wheel
+    - twine upload dist/*
+  artifacts:
+    paths:
+      - build/
+      - dist/
 
-pages:
+deploy-pages:
   stage: deploy
   image: $IMAGE_LATEST
   script:
