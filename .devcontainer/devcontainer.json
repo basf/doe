@@ -1,0 +1,4 @@
+{
+  "build": { "dockerfile": "Dockerfile" },
+  "forwardPorts": [8000]  // for testing the documentation with 'mkdocs serve'
+}
