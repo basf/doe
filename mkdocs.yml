@@ -17,8 +17,8 @@ nav:
 theme:
   name: material
   repo_url: https://gitlab.roqs.basf.net/bayesopt/doe
-  logo: assets/logo.PNG
-  favicon: assets/logo.PNG
+  logo: docs/assets/logo.PNG
+  favicon: docs/assets/logo.PNG
   features:
     toc.integrate
 
