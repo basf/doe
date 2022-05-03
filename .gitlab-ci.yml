@@ -19,6 +19,7 @@ style-check:
 test:
   stage: test
   script:
+    - conda -c install conda-forge cyipopt
     - pip3 install .[testing]
     - pip3 install pytest pytest-cov coverage
     - pytest --cov-report term-missing --cov=pyreto test
