@@ -14,13 +14,18 @@ stages:
   - test
   - deploy
 
-style-check:
+test-variable:
   stage: check
   script:
-    - pip3 install black isort flake8
-    - black --check doe test
-    - flake8 --verbose doe test
-    - isort . --check-only --verbose
+    - echo "$IMAGE_LATEST"
+
+# style-check:
+#   stage: check
+#   script:
+#     - pip3 install black isort flake8
+#     - black --check doe test
+#     - flake8 --verbose doe test
+#     - isort . --check-only --verbose
 
 build-image:
   only:
@@ -37,7 +42,7 @@ build-image:
 
 test:
   stage: test
-  image: ${IMAGE_LATEST}
+  image: $IMAGE_LATEST
   script:
     - pip3 install .
     - pip3 install pytest pytest-cov coverage
@@ -62,7 +67,7 @@ test:
 
 pages:
   stage: deploy
-  image: ${IMAGE_LATEST}
+  image: $IMAGE_LATEST
   script:
   - pip3 install .
   - pip3 install mkdocs mkdocs-material mkdocstrings
