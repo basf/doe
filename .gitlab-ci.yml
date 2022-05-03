@@ -24,7 +24,7 @@ style-check:
 
 build-image:
   only:
-    - main
+    - build-image
   stage: build
   image: registry.roqs.basf.net/docker:stable
   tags:
@@ -35,13 +35,14 @@ build-image:
     - docker push $IMAGE_TAG
     - docker push $IMAGE_TAG_LATEST
 
-# test:
-#   stage: test
-#   script:
-#     - pip3 install .
-#     - pip3 install pytest pytest-cov coverage
-#     - pytest --cov-report term-missing --cov=doe test
-#     - coverage xml
+test:
+  stage: test
+  image: $IMAGE_LATEST
+  script:
+    - pip3 install .
+    - pip3 install pytest pytest-cov coverage
+    - pytest --cov-report term-missing --cov=doe test
+    - coverage xml
 
 # deploy_nexus:
 #   stage: deploy
