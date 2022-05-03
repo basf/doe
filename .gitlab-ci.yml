@@ -24,7 +24,7 @@ style-check:
 
 build-image:
   only:
-    - master
+    - main
   stage: build
   image: registry.roqs.basf.net/docker:stable
   tags:
