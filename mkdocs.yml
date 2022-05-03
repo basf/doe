@@ -21,9 +21,9 @@ nav:
 
 theme:
   name: material
-  repo_url: example.de #TODO: Wo hin?
-  logo: assets/logo.png
-  favicon: assets/logo.png
+  repo_url: https://gitlab.roqs.basf.net/bayesopt/doe
+  logo: assets/logo.PNG
+  favicon: assets/logo.PNG
   features:
     toc.integrate
 
