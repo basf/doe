@@ -165,7 +165,8 @@ def find_local_max_ipopt(
             print(key + ":", result[key])
 
     A = pd.DataFrame(
-        result["x"].reshape(n_experiments, D), columns=problem.inputs.names
+        result["x"].reshape(n_experiments, D),
+        columns=problem.inputs.names,
+        index=[f"exp{i}" for i in range(n_experiments)],
     )
-    A.index = [f"exp{i}" for i in range(len(A))]
     return A

@@ -87,18 +87,18 @@ def get_formula_from_string(
 def n_zero_eigvals(
     problem: opti.Problem, model_type: Union[str, Formula], epsilon=1e-7
 ) -> int:
-    """Computes the number of eigenvalues of the information matrix that are necessarily zero because of
+    """Determine the number of eigenvalues of the information matrix that are necessarily zero because of
     equality constraints."""
     # sample points (fulfilling the constraints)
     model_formula = get_formula_from_string(
         model_type=model_type, problem=problem, rhs_only=True
     )
     N = len(model_formula.terms) + 3
-    A = problem.sample_inputs(N)
+    X = problem.sample_inputs(N)
 
     # compute eigenvalues of information matrix
-    model_matrix = model_formula.get_model_matrix(A)
-    eigvals = np.abs(np.linalg.eigvalsh(model_matrix.T @ model_matrix))
+    A = model_formula.get_model_matrix(X)
+    eigvals = np.abs(np.linalg.eigvalsh(A.T @ A))
 
     return len(eigvals) - len(eigvals[eigvals > epsilon])
 

@@ -112,29 +112,21 @@ def test_number_of_model_terms():
         outputs=[opti.Continuous("y")],
     )
 
-    assert len(get_formula_from_string(problem=problem, model_type="linear").terms) == 6
-    assert (
-        len(
-            get_formula_from_string(
-                problem=problem, model_type="linear-and-quadratic"
-            ).terms
-        )
-        == 11
+    formula = get_formula_from_string(problem=problem, model_type="linear")
+    assert len(formula.terms) == 6
+
+    formula = get_formula_from_string(
+        problem=problem, model_type="linear-and-quadratic"
     )
-    assert (
-        len(
-            get_formula_from_string(
-                problem=problem, model_type="linear-and-interactions"
-            ).terms
-        )
-        == 16
+    assert len(formula.terms) == 11
+
+    formula = get_formula_from_string(
+        problem=problem, model_type="linear-and-interactions"
     )
-    assert (
-        len(
-            get_formula_from_string(problem=problem, model_type="fully-quadratic").terms
-        )
-        == 21
-    )
+    assert len(formula.terms) == 16
+
+    formula = get_formula_from_string(problem=problem, model_type="fully-quadratic")
+    assert len(formula.terms) == 21
 
     # 3 continuous & 2 discrete inputs
     problem = opti.Problem(
@@ -148,29 +140,21 @@ def test_number_of_model_terms():
         outputs=[opti.Continuous("y")],
     )
 
-    assert len(get_formula_from_string(problem=problem, model_type="linear").terms) == 6
-    assert (
-        len(
-            get_formula_from_string(
-                problem=problem, model_type="linear-and-quadratic"
-            ).terms
-        )
-        == 11
+    formula = get_formula_from_string(problem=problem, model_type="linear")
+    assert len(formula.terms) == 6
+
+    formula = get_formula_from_string(
+        problem=problem, model_type="linear-and-quadratic"
     )
-    assert (
-        len(
-            get_formula_from_string(
-                problem=problem, model_type="linear-and-interactions"
-            ).terms
-        )
-        == 16
+    assert len(formula.terms) == 11
+
+    formula = get_formula_from_string(
+        problem=problem, model_type="linear-and-interactions"
     )
-    assert (
-        len(
-            get_formula_from_string(problem=problem, model_type="fully-quadratic").terms
-        )
-        == 21
-    )
+    assert len(formula.terms) == 16
+
+    formula = get_formula_from_string(problem=problem, model_type="fully-quadratic")
+    assert len(formula.terms) == 21
 
 
 def test_constraints_as_scipy_constraints():
