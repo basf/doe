@@ -172,11 +172,7 @@ def constraints_as_scipy_constraints(
             ub = np.zeros(n_experiments) + tol
 
             # define constraint evaluation
-            def fun(x: np.ndarray) -> float:
-                x = pd.DataFrame(
-                    x.reshape(len(x) // D, D), columns=problem.inputs.names
-                )
-                return c(x).to_numpy()
+            fun = ConstraintWrapper(constraint=c, problem=problem, tol=tol)
 
             constraints.append(NonlinearConstraint(fun, lb, ub))
 
@@ -186,29 +182,22 @@ def constraints_as_scipy_constraints(
             ub = np.zeros(n_experiments)
 
             # define constraint evaluation
-            def fun(x: np.ndarray) -> float:
-                x = pd.DataFrame(
-                    x.reshape(len(x) // D, D), columns=problem.inputs.names
-                )
-                return c(x).to_numpy()
+            fun = ConstraintWrapper(constraint=c, problem=problem, tol=tol)
 
             constraints.append(NonlinearConstraint(fun, lb, ub))
 
         elif isinstance(c, opti.NChooseK):
-            # write upper bound as vector
+            # write upper/lower bound as vector
             lb = -np.inf * np.ones(n_experiments)
             ub = np.zeros(n_experiments)
 
             # define constraint evaluation
-            def fun(x: np.ndarray) -> float:
-                x[np.abs(x) < tol] = 0
-                x = pd.DataFrame(
-                    x.reshape(len(x) // D, D), columns=problem.inputs.names
-                )
-                return c(x).to_numpy()
+            fun = ConstraintWrapper(constraint=c, problem=problem, tol=tol)
 
             # define constraint gradients
-            jac = get_jacobian_NChooseK(c, problem, n_experiments, tol)
+            jac = JacobianNChooseK(
+                constraint=c, problem=problem, n_experiments=n_experiments, tol=tol
+            )
 
             constraints.append(NonlinearConstraint(fun, lb, ub, jac=jac))
 
@@ -218,42 +207,76 @@ def constraints_as_scipy_constraints(
     return constraints
 
 
-def get_jacobian_NChooseK(
-    constraint: opti.NChooseK,
-    problem: opti.Problem,
-    n_experiments: int,
-    tol: float = 1e-3,
-):
-    """Returns a function that computes the gradient of a NChooseK constraint.
+# TODO: testen
+class ConstraintWrapper:
+    """Wrapper for opti constraint calls using flattened numpy arrays instead of ."""
 
-    Args:
-        constraint (opti.NChooseK): NChooseK constraint whose gradient should be computed.
-        problem (opti.Problem): problem whose constraints should be formulated as scipy constraints.
-        n_experiments (int): Number of instances of inputs for problem that are evaluated together.
-        tol (float): Tolerance for the computation of the constraint violation. Default value is 1e-3.
+    def __init__(
+        self,
+        constraint: opti.constraint.Constraint,
+        problem: opti.Problem,
+        tol: float = 1e-3,
+    ) -> None:
+        """
+        Args:
+            constraint (opti.constraint.Constraint): opti constraint to be called
+            problem (opti.Problem): problem the constraint belongs to
+            tol (float): tolerance for constraint violation. Default value is 1e-3.
+        """
+        self.constraint = constraint
+        self.tol = tol
+        self.names = problem.inputs.names
+        self.D = problem.n_inputs
 
-    Returns:
-        A function that returns the gradient of constraint for a given input.
+    def __call__(self, x: np.ndarray) -> np.ndarray:
+        "call constraint with flattened numpy array"
+        x[np.abs(x) < self.tol] = 0
+        x = pd.DataFrame(x.reshape(len(x) // self.D, self.D), columns=self.names)
+        return self.constraint(x).to_numpy()
 
-    """
-    D = problem.n_inputs
 
-    def jac(x: np.ndarray) -> np.ndarray:
+class JacobianNChooseK:
+    """Jacobian for NChooseK constraints."""
+
+    def __init__(
+        self,
+        constraint: opti.NChooseK,
+        problem: opti.Problem,
+        n_experiments: int,
+        tol: float = 1e-3,
+    ) -> None:
+        """
+        Args:
+            constraint (opti.NChooseK): NChooseK constraint whose gradient should be computed.
+            problem (opti.Problem): problem whose constraints should be formulated as scipy constraints.
+            n_experiments (int): Number of instances of inputs for problem that are evaluated together.
+            tol (float): Tolerance for the computation of the constraint violation. Default value is 1e-3.
+
+        Returns:
+            A function that returns the gradient of constraint for a given input.
+
+        """
+        self.constraint = constraint
+        self.n_experiments = n_experiments
+        self.tol = tol
+        self.D = problem.n_inputs
+
+    def __call__(self, x: np.ndarray) -> np.ndarray:
         """Jacobian for the NChooseK constriant."""
-        x = x.reshape(len(x) // D, D)
+        x = x.reshape(len(x) // self.D, self.D)
 
         # randomly permute columns
-        permutation = np.random.permutation(D)
+        permutation = np.random.permutation(self.D)
         x = x[:, permutation]
 
         # find correct order of entries
-        ind = np.argsort(-np.abs(x), axis=1)[:, constraint.max_active :]
+        ind = np.argsort(-np.abs(x), axis=1)[:, self.constraint.max_active :]
 
         # mask for sign
         mask = -2 * np.array(x < 0, dtype=int) + 1
 
         # set to zero where below threshold
-        x[np.abs(x) < tol] = 0
+        x[np.abs(x) < self.tol] = 0
 
         # set gradient value
         j = np.zeros(shape=x.shape, dtype=int)
@@ -262,16 +285,14 @@ def get_jacobian_NChooseK(
         j *= mask
 
         # invert permutation of columns
-        _permutation = np.zeros(D, dtype=int)
-        for i in range(D):
+        _permutation = np.zeros(self.D, dtype=int)
+        for i in range(self.D):
             _permutation[permutation[i]] = i
         j = j[:, _permutation]
 
         # write jacobian into larger matrix (where x is interpreted as a long vector)
-        J = np.zeros(shape=(n_experiments, D * n_experiments))
-        for i in range(n_experiments):
-            J[i, i * D : (i + 1) * D] = j[i]
+        J = np.zeros(shape=(self.n_experiments, self.D * self.n_experiments))
+        for i in range(self.n_experiments):
+            J[i, i * self.D : (i + 1) * self.D] = j[i]
 
         return J
-
-    return jac

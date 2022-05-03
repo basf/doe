@@ -4,9 +4,9 @@ import pandas as pd
 from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 from doe.utils import (
+    JacobianNChooseK,
     constraints_as_scipy_constraints,
     get_formula_from_string,
-    get_jacobian_NChooseK,
     n_zero_eigvals,
 )
 
@@ -262,7 +262,7 @@ def test_constraints_as_scipy_constraints():
     )
 
 
-def test_get_jacobian_NChooseK():
+def test_JacobianNChooseK():
 
     # problem with NChooseK constraint
     inputs = opti.Parameters([opti.Continuous(f"x{i}", [0, 1]) for i in range(4)])
@@ -284,7 +284,7 @@ def test_get_jacobian_NChooseK():
         ]
     ).flatten()
 
-    jac = get_jacobian_NChooseK(problem.constraints[0], problem, n_experiments)
+    jac = JacobianNChooseK(problem.constraints[0], problem, n_experiments)
 
     np.random.seed(1)
     jac_corr = np.array(
