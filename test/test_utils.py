@@ -340,11 +340,11 @@ def test_ConstraintWrapper():
 
     # linear equality
     c = ConstraintWrapper(problem.constraints[0], problem, tol=0)
-    assert np.allclose(c(x), np.array([1.5, 0.5, 2.5]))
+    assert np.allclose(c(x), np.array([3, 1, 5]))
 
     # linear inequaity
     c = ConstraintWrapper(problem.constraints[1], problem, tol=0)
-    assert np.allclose(c(x), np.array([1.5, 0.5, 2.5]))
+    assert np.allclose(c(x), np.array([3, 1, 5]))
 
     # nonlinear equality
     c = ConstraintWrapper(problem.constraints[2], problem, tol=0)
