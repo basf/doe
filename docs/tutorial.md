@@ -1,4 +1,4 @@
-# Basic example
+# Basic example: TEST
 
 In this tutorial we solve a bunch of simple DoE-problems and while doing so we explore the functions provided by this package.
 
