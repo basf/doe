@@ -1,6 +1,7 @@
 import numpy as np
 import opti
 import pandas as pd
+import pytest
 from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 from doe.utils import (
@@ -407,16 +408,33 @@ def test_a_optimality():
 
 
 def test_g_efficiency():
-    # define model matrix
+    # define model matrix and problem: no constraints
     X = np.array(
         [
             [1, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
+            [0, 0.1, 0, 0],
+            [0, 0, 0.1, 0],
+            [0, 0, 0, 0.1],
         ]
     )
-    assert np.allclose(g_efficiency(X), 100)
+
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [0.95, 1.0]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+    )
+    assert np.allclose(g_efficiency(X, problem), 0.333, atol=5e-3)
+
+    # define problem: sampling not implemented
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [0.95, 1.0]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.LinearEquality(names=["x1", "x2", "x3", "x4"], rhs=1),
+            opti.NChooseK(names=["x1", "x2", "x3", "x4"], max_active=1),
+        ],
+    )
+    with pytest.raises(Exception):
+        g_efficiency(X, problem, n_samples=1)
 
 
 def test_metrics():
@@ -429,8 +447,34 @@ def test_metrics():
             [1, 0, 0, 0],
         ]
     )
-    d = metrics(X)
+
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [0.95, 1.0]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+    )
+
+    d = metrics(X, problem)
     assert d.index[0] == "D-optimality"
     assert d.index[1] == "A-optimality"
     assert d.index[2] == "G-efficiency"
-    assert np.allclose(d, np.array([d_optimality(X), a_optimality(X), g_efficiency(X)]))
+    assert np.allclose(
+        d,
+        np.array([d_optimality(X), a_optimality(X), g_efficiency(X, problem)]),
+        rtol=0.05,
+    )
+
+    # define problem: sampling not implemented
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [0.95, 1.0]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.LinearEquality(names=["x1", "x2", "x3", "x4"], rhs=1),
+            opti.NChooseK(names=["x1", "x2", "x3", "x4"], max_active=1),
+        ],
+    )
+    with pytest.warns(UserWarning):
+        d = metrics(X, problem, n_samples=1)
+    assert d.index[0] == "D-optimality"
+    assert d.index[1] == "A-optimality"
+    assert d.index[2] == "G-efficiency"
+    assert np.allclose(d, np.array([d_optimality(X), a_optimality(X), 0]))

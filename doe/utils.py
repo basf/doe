@@ -1,3 +1,4 @@
+import warnings
 from typing import List, Optional, Union
 
 import numpy as np
@@ -322,7 +323,10 @@ def a_optimality(X: np.ndarray, tol=1e-9) -> float:
     return np.sum(1 / eigenvalues)
 
 
-def g_efficiency(X: np.ndarray, delta=1e-9) -> float:
+# TODO: änderungen testen
+def g_efficiency(
+    X: np.ndarray, problem: opti.Problem, delta: float = 1e-9, n_samples: int = 1e4
+) -> float:
     """Compute the G-efficiency for a model matrix X.
     G-efficiency is proportional to p/(n*d) where p is the number of model terms,
     n is the number of runs and d is the maximum relative prediction variance over
@@ -332,33 +336,56 @@ def g_efficiency(X: np.ndarray, delta=1e-9) -> float:
     # number of runs and model terms
     n, p = X.shape
 
+    # take large sample from the design space
+    Y = problem.sample_inputs(int(n_samples)).to_numpy()
+
     # variance over set of runs
-    D = X @ np.linalg.inv(X.T @ X + delta * np.eye(p)) @ X.T
+    D = Y @ np.linalg.inv(X.T @ X + delta * np.eye(p)) @ Y.T
     d = np.max(np.diag(D))
 
     G_eff = 100 * p / (n * d)
     return G_eff
 
 
-def metrics(X: np.ndarray, tol=1e-9, delta=1e-9) -> pd.Series:
+# TODO: änderungen testesn
+def metrics(
+    X: np.ndarray,
+    problem: opti.Problem,
+    tol: float = 1e-9,
+    delta: float = 1e-9,
+    n_samples: int = 1e4,
+) -> pd.Series:
     """Returns a series containing D-optimality, A-optimality and G-efficiency
     for a model matrix X
 
     Args:
         X (np.ndarray): model matrix for which the metrics are determined
+        problem (opti.Problem): problem definition containing the constraints of the design space.
         tol (float): cutoff value for eigenvalues of the information matrix in
             D- and A- optimality computation. Default value is 1e-9.
         delta (float): regularization parameter in G-efficiency computation.
             Default value is 1e-9
+        n_samples (int): number of samples used to determine G-efficiency. Default value is 1e4.
 
     Returns:
         A pd.Series containing the values for the three metrics.
     """
 
+    # try to determine G-efficiency
+    try:
+        g_eff = g_efficiency(X, problem, delta, n_samples)
+
+    except Exception:
+        warnings.warn(
+            "Sampling of points fulfilling this problem's constraints is not implemented. \
+            G-efficiency can't be determined."
+        )
+        g_eff = 0
+
     return pd.Series(
         {
             "D-optimality": d_optimality(X, tol),
             "A-optimality": a_optimality(X, tol),
-            "G-efficiency": g_efficiency(X, delta),
+            "G-efficiency": g_eff,
         }
     )
