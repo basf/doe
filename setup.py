@@ -17,6 +17,6 @@ setup(
     version=get_version(),
     description="Advanced & flexible design of experiments",
     packages=["doe"],
-    install_requires=["loguru", "mopti", "pandas", "scipy", "numpy", "formulaic"],
+    install_requires=["loguru", "mopti==0.10.8", "pandas", "scipy", "numpy", "formulaic"],
     python_requires=">=3.6",
 )
