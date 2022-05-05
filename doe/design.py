@@ -12,6 +12,7 @@ from doe.JacobianForLogdet import JacobianForLogdet
 from doe.utils import (
     constraints_as_scipy_constraints,
     get_formula_from_string,
+    metrics,
     n_zero_eigvals,
 )
 
@@ -159,14 +160,18 @@ def find_local_max_ipopt(
         jac=J.jacobian,
     )
 
-    # exit status messages
-    if _ipopt_options[b"print_level"] > 12:
-        for key in ["fun", "message", "nfev", "nit", "njev", "status", "success"]:
-            print(key + ":", result[key])
-
     A = pd.DataFrame(
         result["x"].reshape(n_experiments, D),
         columns=problem.inputs.names,
         index=[f"exp{i}" for i in range(n_experiments)],
     )
+
+    # exit message
+    if _ipopt_options[b"print_level"] > 12:
+        for key in ["fun", "message", "nfev", "nit", "njev", "status", "success"]:
+            print(key + ":", result[key])
+        X = model_formula.get_model_matrix(A).to_numpy()
+        d = metrics(X, problem, n_samples=1000)
+        print("metrics:", d)
+
     return A
