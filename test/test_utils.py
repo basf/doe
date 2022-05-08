@@ -8,6 +8,7 @@ from doe.utils import (
     ConstraintWrapper,
     JacobianNChooseK,
     a_optimality,
+    check_nchoosek_constraints_linearizable,
     constraints_as_scipy_constraints,
     d_optimality,
     g_efficiency,
@@ -478,3 +479,72 @@ def test_metrics():
     assert d.index[1] == "A-optimality"
     assert d.index[2] == "G-efficiency"
     assert np.allclose(d, np.array([d_optimality(X), a_optimality(X), 0]))
+
+
+def test_check_nchoosek_constraints_linearizable():
+    # define problem: linearizable, no NChooseK constraints
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [0, 1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+    )
+    check_nchoosek_constraints_linearizable(problem)
+
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [0, 1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[],
+    )
+    check_nchoosek_constraints_linearizable(problem)
+
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [0, 1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.LinearEquality(names=["x1", "x2"])],
+    )
+    check_nchoosek_constraints_linearizable(problem)
+
+    # define problem: linearizable, with NChooseK and other constraints
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [0, 1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.LinearEquality(names=["x1", "x2"]),
+            opti.LinearInequality(names=["x3", "x4"]),
+            opti.NChooseK(names=["x1", "x2"], max_active=1),
+            opti.NChooseK(names=["x3", "x4"], max_active=1),
+        ],
+    )
+    check_nchoosek_constraints_linearizable(problem)
+
+    # define problem: not linearizable, invalid bounds
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [None, 1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.NChooseK(names=["x1", "x2"], max_active=1),
+        ],
+    )
+    with pytest.raises(ValueError):
+        check_nchoosek_constraints_linearizable(problem)
+
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [-i, 1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.NChooseK(names=["x1", "x2"], max_active=1),
+        ],
+    )
+    with pytest.raises(ValueError):
+        check_nchoosek_constraints_linearizable(problem)
+
+    # define problem: not linearizable, names parameters of two NChooseK overlap
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [0, 1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.NChooseK(names=["x1", "x2"], max_active=1),
+            opti.NChooseK(names=["x2", "x3", "x4"], max_active=2),
+        ],
+    )
+    with pytest.raises(ValueError):
+        check_nchoosek_constraints_linearizable(problem)
