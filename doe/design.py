@@ -56,6 +56,7 @@ def get_objective(
     return objective
 
 
+# TODO: teste linearize_NChooseK
 def find_local_max_ipopt(
     problem: opti.Problem,
     model_type: Union[str, Formula],
@@ -63,6 +64,7 @@ def find_local_max_ipopt(
     tol: float = 1e-3,
     delta: float = 1e-7,
     ipopt_options: Dict = {},
+    linearize_NChooseK: bool = False,
     jacobian_building_block: Callable = None,
 ) -> pd.DataFrame:
     """Function computing a d-optimal design" for a given opti problem and model.
@@ -75,6 +77,8 @@ def find_local_max_ipopt(
         tol (float): Tolerance for equality/NChooseK constraint violation. Default value is 1e-3.
         delta (float): Regularization parameter. Default value is 1e-3.
         ipopt_options (Dict): options for IPOPT. For more information see [this link](https://coin-or.github.io/Ipopt/OPTIONS.html)
+        linearize_NChooseK (bool): Tries to replace NChooseK constraints by linear constraints if set
+            to True. For details see nchoosek_constraint_as_scipy_linear_constraint() function.
         jacobian_building_block (Callable): Only needed for models of higher order than 3. derivatives
             of each model term with respect to each input variable.
 
@@ -110,7 +114,7 @@ def find_local_max_ipopt(
 
         _constraints = []
         for c in problem.constraints:
-            if isinstance(c, opti.NChooseK):
+            if not isinstance(c, opti.NChooseK):
                 _constraints.append(c)
         _problem = opti.Problem(
             inputs=problem.inputs, outputs=problem.outputs, constraints=_constraints
@@ -140,7 +144,9 @@ def find_local_max_ipopt(
     )
 
     # write constraints as scipy constraints
-    constraints = constraints_as_scipy_constraints(problem, n_experiments, tol)
+    constraints = constraints_as_scipy_constraints(
+        problem, n_experiments, tol, linearize_NChooseK
+    )
 
     # set ipopt options
     _ipopt_options = {"maxiter": 500, "disp": 0}
