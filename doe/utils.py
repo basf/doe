@@ -468,18 +468,20 @@ def check_nchoosek_constraints_linearizable(problem: opti.Problem) -> None:
         if isinstance(c, opti.NChooseK):
             nchoosek_constraints.append(c)
 
+    if len(nchoosek_constraints) == 0:
+        return
+
     # check if the domains of all NCHooseK constraints are compatible to linearization
     parameter_names = np.unique(np.concatenate([c.names for c in nchoosek_constraints]))
     for name in parameter_names:
-        assert (
-            problem.inputs[name].domain[0] == 0
-        ), f"Constraint {c} cannot be linearized. Lower bound of domain must be 0."
+        if problem.inputs[name].domain[0] != 0:
+            raise ValueError(f"Constraint {c} cannot be linearized. Lower bound of domain must be 0.")
 
     # check if the parameter names of two nchoose overlap
     for c in nchoosek_constraints:
         for _c in nchoosek_constraints:
             if c != _c:
                 for name in c.names:
-                    assert (
-                        name not in _c.names
-                    ), f"Problem {problem} cannot be used for linearization. names attribute of NChooseK constraints must be pairwise disjoint."
+                    if name in _c.names:
+                        raise ValueError(f"Problem {problem} cannot be used for linearization. \
+                            names attribute of NChooseK constraints must be pairwise disjoint.")
