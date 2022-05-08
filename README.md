@@ -8,7 +8,7 @@ You can find the documentation [here](http://bayesopt.docs.basf.net/doe).
 
 ## Install
 
-pyreto can be installed from [nexus.roqs.basf.net](https://developer.docs.basf.net/setup/python/#configure) (NOT YET).
+pyreto can be installed from [nexus.roqs.basf.net](https://developer.docs.basf.net/setup/python/#configure).
 ```
 pip install basf-doe
 ```
