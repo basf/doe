@@ -9,6 +9,10 @@ nav:
   - Getting started:
     - Install: install.md
     - Tutorial: tutorial.md
+  - Examples:
+    - Large decision variable space: large_mixture.md
+    - Tentative NChooseK constraint support: nchoosek_constraint.md
+    - Performance compared to modde: modde_comparison.md #TODO
   - Code Reference:
     - ref-design.md
     - ref-JacobianForLogdet.md
