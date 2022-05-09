@@ -416,7 +416,6 @@ def metrics(
     )
 
 
-# TODO: testen
 def nchoosek_constraint_as_scipy_linear_constraint(
     constraint: opti.NChooseK, names: List, n_experiments: int, tol: float = 1e-3
 ) -> LinearConstraint:

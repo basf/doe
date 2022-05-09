@@ -15,6 +15,7 @@ from doe.utils import (
     get_formula_from_string,
     metrics,
     n_zero_eigvals,
+    nchoosek_constraint_as_scipy_linear_constraint,
 )
 
 
@@ -548,3 +549,39 @@ def test_check_nchoosek_constraints_linearizable():
     )
     with pytest.raises(ValueError):
         check_nchoosek_constraints_linearizable(problem)
+
+
+def test_nchoosek_as_scipy_linear_constraint():
+    # define constraints and problem names: standard case
+    constraint = opti.NChooseK(names=["x1", "x2", "x3", "x4"], max_active=3)
+    names = [f"x{i+1}" for i in range(6)]
+    n_experiments = 10
+
+    linear_constraint = nchoosek_constraint_as_scipy_linear_constraint(
+        constraint,
+        names,
+        n_experiments,
+    )
+
+    assert isinstance(linear_constraint, LinearConstraint)
+    assert np.shape(linear_constraint.A) == (1, len(names) * n_experiments)
+    assert np.allclose(linear_constraint.ub, [1e-3])
+    assert np.allclose(linear_constraint.lb, [-np.inf])
+
+    # define constraints and problem names: standard case, assert all entries are correct
+    constraint = opti.NChooseK(names=["x1", "x3", "x4"], max_active=1)
+    names = [f"x{i+1}" for i in range(4)]
+    n_experiments = 4
+
+    np.random.seed(1)
+    linear_constraint = nchoosek_constraint_as_scipy_linear_constraint(
+        constraint,
+        names,
+        n_experiments,
+    )
+
+    A = np.array([1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0]) / np.sqrt(8)
+
+    assert np.allclose(linear_constraint.A, A)
+    assert np.allclose(linear_constraint.ub, [1e-3])
+    assert np.allclose(linear_constraint.lb, [-np.inf])
