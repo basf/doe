@@ -1,5 +1,6 @@
 import numpy as np
 import opti
+import pytest
 
 from doe.design import find_local_max_ipopt, get_objective, logD
 from doe.utils import get_formula_from_string, n_zero_eigvals
@@ -60,6 +61,7 @@ def test_find_local_max_ipopt_mixture():
 
 
 def test_find_local_max_ipopt_results():
+    #define problem: no NChooseK constraints
     problem = opti.Problem(
         inputs=opti.Parameters([opti.Continuous(f"x{i+1}", [0, 1]) for i in range(3)]),
         outputs=[opti.Continuous("y")],
@@ -75,6 +77,24 @@ def test_find_local_max_ipopt_results():
     np.random.seed(1)
     A = find_local_max_ipopt(problem, "linear", n_experiments=12)
     opt = np.array([[0.2, 0.2, 0.6], [0.3, 0.6, 0.1], [0.7, 0.1, 0.2], [0.3, 0.1, 0.6]])
+    for row in A.to_numpy():
+        assert any([np.allclose(row, o, atol=1e-2) for o in opt])
+    for o in opt[:-1]:
+        assert any([np.allclose(o, row, atol=1e-2) for row in A.to_numpy()])
+
+    #define problem: with NChooseK constraints, linearizable
+    problem = opti.Problem(
+        inputs=opti.Parameters([opti.Continuous(f"x{i+1}", [0, 1]) for i in range(3)]),
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.LinearEquality(names=["x1", "x2", "x3"], rhs=1),
+            opti.NChooseK(names=["x1","x2","x3"], max_active=1)
+        ],
+    )
+
+    with pytest.warns(UserWarning):
+        A = find_local_max_ipopt(problem, "fully-quadratic", ipopt_options={"maxiter":100})
+    opt = np.eye(3)
     for row in A.to_numpy():
         assert any([np.allclose(row, o, atol=1e-2) for o in opt])
     for o in opt[:-1]:
