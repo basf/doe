@@ -56,7 +56,6 @@ def get_objective(
     return objective
 
 
-# TODO: teste linearize_NChooseK
 def find_local_max_ipopt(
     problem: opti.Problem,
     model_type: Union[str, Formula],
