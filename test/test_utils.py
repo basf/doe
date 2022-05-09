@@ -222,7 +222,7 @@ def test_constraints_as_scipy_constraints():
         assert len(c.ub) == n_experiments
         assert np.allclose(c.fun(np.array([1, 1, 1, 1, 1, 1])), [1, 1])
 
-    # problem with NChooseK constraint
+    # problem with NChooseK constraint: no linearization
     inputs = opti.Parameters([opti.Continuous(f"x{i}", [0, 1]) for i in range(4)])
     problem = opti.Problem(
         inputs=inputs,
@@ -252,6 +252,72 @@ def test_constraints_as_scipy_constraints():
             pd.DataFrame(x.reshape(5, 4), columns=["x0", "x1", "x2", "x3"])
         ),
     )
+
+    # problem with NChooseK constraint: with linearization
+    inputs = opti.Parameters([opti.Continuous(f"x{i}", [0, 1]) for i in range(4)])
+    problem = opti.Problem(
+        inputs=inputs,
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.NChooseK(inputs.names, max_active=2)],
+    )
+    n_experiments = 7
+
+    np.random.seed(1)
+    with pytest.warns(UserWarning):
+        constraints = constraints_as_scipy_constraints(
+            problem, n_experiments, linearize_NChooseK=True
+        )
+
+    A = np.array(
+        [
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            0,
+            0,
+            1,
+        ]
+    ) / np.sqrt(14)
+    assert isinstance(constraints[0], LinearConstraint)
+    assert np.allclose(constraints[0].A, A)
+    assert np.allclose(constraints[0].ub, [1e-3])
+    assert np.allclose(constraints[0].lb, [-np.inf])
+
+    # problem with NChooseK constraint: with linearization, not linearizable
+    inputs = opti.Parameters([opti.Continuous(f"x{i}", [-1, 1]) for i in range(4)])
+    problem = opti.Problem(
+        inputs=inputs,
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.NChooseK(inputs.names, max_active=2)],
+    )
+    n_experiments = 1
+
+    with pytest.raises(ValueError):
+        constraints = constraints_as_scipy_constraints(
+            problem, n_experiments, linearize_NChooseK=True
+        )
 
 
 def test_JacobianNChooseK():
