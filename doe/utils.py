@@ -1,4 +1,5 @@
 import warnings
+from itertools import combinations
 from typing import List, Optional, Union
 
 import numpy as np
@@ -416,7 +417,6 @@ def metrics(
 
 
 # TODO: testen
-# TODO: wähle permutationen nicht zufällig
 def nchoosek_constraint_as_scipy_linear_constraint(
     constraint: opti.NChooseK, names: List, n_experiments: int, tol: float = 1e-3
 ) -> LinearConstraint:
@@ -442,11 +442,15 @@ def nchoosek_constraint_as_scipy_linear_constraint(
     # find indices of constraint.names in names
     ind = [i for i, p in enumerate(names) if p in constraint.names]
 
+    # find and shuffle all combinations of elements of ind of length max_active
+    ind = np.array([c for c in combinations(ind, r=n_inactive)])
+    np.random.shuffle(ind)
+
     # set up linear constraint matrix
     A = np.zeros(shape=(1, len(names) * n_experiments))
 
     for i in range(n_experiments):
-        ind_vanish = np.random.choice(ind, size=n_inactive, replace=False)
+        ind_vanish = ind[i % len(ind)]
         A[0, ind_vanish + i * len(names)] = 1
     A /= np.sqrt(n_inactive * n_experiments)
 
@@ -457,7 +461,6 @@ def nchoosek_constraint_as_scipy_linear_constraint(
     return LinearConstraint(A, lb, ub)
 
 
-# TODO: testen
 def check_nchoosek_constraints_linearizable(problem: opti.Problem) -> None:
     # collect NChooseK constraints
     if problem.n_constraints == 0:
