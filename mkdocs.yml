@@ -12,7 +12,8 @@ nav:
   - Examples:
     - Large decision variable space: large_mixture.md
     - Tentative NChooseK constraint support: nchoosek_constraint.md
-    - Performance compared to modde: modde_comparison.md #TODO
+    - Multiple mixture constraints: multiple_mixture_constraints.md
+    - Performance compared to modde: modde_comparison.md
   - Code Reference:
     - ref-design.md
     - ref-JacobianForLogdet.md
