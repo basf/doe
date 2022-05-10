@@ -1,7 +1,7 @@
 # DoE
 
 DoE is a python package for generating (D-)optimal experimental designs. 
-It uses [opti](https://basf.github.io/mopti/) for specifying the design space and [formulaic](https://matthewwardrop.github.io/formulaic/) for specifying the assumed model.
+It uses [opti](https://basf.github.io/mopti/) and [formulaic](https://matthewwardrop.github.io/formulaic/) for specifying the design space and model.
 
 You can find the documentation [here](http://bayesopt.docs.basf.net/doe).
 
