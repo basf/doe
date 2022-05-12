@@ -88,15 +88,15 @@ def test_get_formula_from_string():
 
     # get formula for very large model
     model = ""
-    for i in range(250):
+    for i in range(350):
         model += f"x{i} + "
     model = model[:-3]
     model = get_formula_from_string(model)
 
-    terms = [f"x{i}" for i in range(250)]
+    terms = [f"x{i}" for i in range(350)]
     terms.append("1")
 
-    for i in range(251):
+    for i in range(351):
         assert model.terms[i] in terms
         assert terms[i] in model.terms
 
