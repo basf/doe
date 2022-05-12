@@ -1,9 +1,10 @@
+import sys
+
 import numpy as np
 import opti
 import pandas as pd
 import pytest
 from scipy.optimize import LinearConstraint, NonlinearConstraint
-import sys
 
 from doe.utils import (
     ConstraintWrapper,
@@ -23,7 +24,7 @@ from doe.utils import (
 def test_get_formula_from_string_recursion_limit():
     # save recursion limit
     recursion_limit = sys.getrecursionlimit()
-    
+
     # get formula for very large model
     model = ""
     for i in range(350):
