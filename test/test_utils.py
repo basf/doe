@@ -85,14 +85,14 @@ def test_get_formula_from_string():
     # get formula without model: invalid input
     with pytest.raises(AssertionError):
         model = get_formula_from_string("linear")
-    
+
     # get formula for very large model
     model = ""
     for i in range(250):
         model += f"x{i} + "
     model = model[:-3]
     model = get_formula_from_string(model)
-    
+
     terms = [f"x{i}" for i in range(250)]
     terms.append("1")
 

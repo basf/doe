@@ -1,7 +1,7 @@
+import sys
 import warnings
 from itertools import combinations
 from typing import List, Optional, Union
-import sys
 
 import numpy as np
 import opti
@@ -88,7 +88,7 @@ def get_formula_from_string(
         if hasattr(formula, "rhs"):
             formula = formula.rhs
 
-    #set recursion limit to old value
+    # set recursion limit to old value
     sys.setrecursionlimit(recursion_limit)
 
     return formula
