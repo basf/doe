@@ -1,6 +1,7 @@
 import warnings
 from itertools import combinations
 from typing import List, Optional, Union
+import sys
 
 import numpy as np
 import opti
@@ -25,6 +26,10 @@ def get_formula_from_string(
     Returns:
         A Formula object describing the model that was given as string or keyword.
     """
+    # set maximum recursion depth to higher value
+    recursion_limit = sys.getrecursionlimit()
+    sys.setrecursionlimit(2000)
+
     if isinstance(model_type, Formula):
         return model_type
 
@@ -82,6 +87,9 @@ def get_formula_from_string(
     if rhs_only:
         if hasattr(formula, "rhs"):
             formula = formula.rhs
+
+    #set recursion limit to old value
+    sys.setrecursionlimit(recursion_limit)
 
     return formula
 

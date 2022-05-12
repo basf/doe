@@ -77,6 +77,29 @@ def test_get_formula_from_string():
     assert all(term in terms_rhs for term in model_formula.terms.rhs)
     assert all(term in model_formula.terms.rhs for term in terms_rhs)
 
+    # get formula without model: valid input
+    model = "x1 + x2 + x3"
+    model = get_formula_from_string(model)
+    assert str(model) == "1 + x1 + x2 + x3"
+
+    # get formula without model: invalid input
+    with pytest.raises(AssertionError):
+        model = get_formula_from_string("linear")
+    
+    # get formula for very large model
+    model = ""
+    for i in range(250):
+        model += f"x{i} + "
+    model = model[:-3]
+    model = get_formula_from_string(model)
+    
+    terms = [f"x{i}" for i in range(250)]
+    terms.append("1")
+
+    for i in range(251):
+        assert model.terms[i] in terms
+        assert terms[i] in model.terms
+
 
 def test_n_zero_eigvals_unconstrained():
     # 5 continous & 1 categorical inputs
