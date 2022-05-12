@@ -3,6 +3,7 @@ import opti
 import pandas as pd
 import pytest
 from scipy.optimize import LinearConstraint, NonlinearConstraint
+import sys
 
 from doe.utils import (
     ConstraintWrapper,
@@ -17,6 +18,27 @@ from doe.utils import (
     n_zero_eigvals,
     nchoosek_constraint_as_scipy_linear_constraint,
 )
+
+
+def test_get_formula_from_string_recursion_limit():
+    # save recursion limit
+    recursion_limit = sys.getrecursionlimit()
+    
+    # get formula for very large model
+    model = ""
+    for i in range(350):
+        model += f"x{i} + "
+    model = model[:-3]
+    model = get_formula_from_string(model)
+
+    terms = [f"x{i}" for i in range(350)]
+    terms.append("1")
+
+    for i in range(351):
+        assert model.terms[i] in terms
+        assert terms[i] in model.terms
+
+    assert recursion_limit == sys.getrecursionlimit()
 
 
 def test_get_formula_from_string():
