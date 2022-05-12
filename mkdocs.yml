@@ -9,6 +9,7 @@ nav:
   - Getting started:
     - Install: install.md
     - Tutorial: tutorial.md
+    - Tips: tips.md
   - Examples:
     - Large decision variable space: large_mixture.md
     - Tentative NChooseK constraint support: nchoosek_constraint.md
