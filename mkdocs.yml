@@ -17,7 +17,7 @@ nav:
     - Performance compared to modde: modde_comparison.md
   - Code Reference:
     - ref-design.md
-    - ref-JacobianForLogdet.md
+    - ref-jacobian.md
     - ref-utils.md
 
 theme:

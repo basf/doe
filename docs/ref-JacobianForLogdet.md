@@ -1,3 +1,0 @@
-# JacobianForLogdet
-
-::: doe.JacobianForLogdet

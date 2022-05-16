@@ -8,7 +8,7 @@ from cyipopt import minimize_ipopt
 from formulaic import Formula
 from scipy.optimize._minimize import standardize_constraints
 
-from doe.JacobianForLogdet import JacobianForLogdet
+from doe.jacobian import JacobianForLogdet
 from doe.utils import (
     constraints_as_scipy_constraints,
     get_formula_from_string,
