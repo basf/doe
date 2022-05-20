@@ -9,6 +9,7 @@ from formulaic import Formula
 from scipy.optimize._minimize import standardize_constraints
 
 from doe.jacobian import JacobianForLogdet
+from doe.sampling import OptiSampling, Sampling
 from doe.utils import (
     constraints_as_scipy_constraints,
     get_formula_from_string,
@@ -56,30 +57,34 @@ def get_objective(
     return objective
 
 
+# TODO: docs aktualisieren
 def find_local_max_ipopt(
     problem: opti.Problem,
     model_type: Union[str, Formula],
     n_experiments: Optional[int] = None,
-    tol: float = 1e-3,
+    tol: float = 0,
     delta: float = 1e-7,
     ipopt_options: Dict = {},
-    linearize_NChooseK: bool = False,
+    linearize_NChooseK: bool = True,
     jacobian_building_block: Callable = None,
+    sampling: Union[Sampling, np.ndarray] = OptiSampling,
 ) -> pd.DataFrame:
     """Function computing a d-optimal design" for a given opti problem and model.
 
     Args:
         problem (opti.Problem): problem containing the inputs and constraints.
-        model_type (str, Formula): keyword or formulaic Formula describing the model.
+        model_type (str, Formula): keyword or formulaic Formula describing the model. Known keywords
+            are "linear", "linear-and-interactions", "linear-and-quadratic", "fully-quadratic".
         n_experiments (int): Number of experiments. By default the value corresponds to
-            the number of model terms + 3.
-        tol (float): Tolerance for equality/NChooseK constraint violation. Default value is 1e-3.
+            the number of model terms - dimension of ker() + 3.
+        tol (float): Tolerance for linear/NChooseK constraint violation. Default value is 0.
         delta (float): Regularization parameter. Default value is 1e-3.
         ipopt_options (Dict): options for IPOPT. For more information see [this link](https://coin-or.github.io/Ipopt/OPTIONS.html)
         linearize_NChooseK (bool): Tries to replace NChooseK constraints by linear constraints if set
-            to True. For details see nchoosek_constraint_as_scipy_linear_constraint() function.
+            to True. For details see nchoosek_constraint_as_scipy_linear_constraint() function. Default value is True.
         jacobian_building_block (Callable): Only needed for models of higher order than 3. derivatives
             of each model term with respect to each input variable.
+        sampling (Sampling, np.ndarray): Sampling class or a np.ndarray object containing the initial guess.
 
     Returns:
         A pd.DataFrame object containing the best found input for the experiments. This is only a
@@ -92,43 +97,40 @@ def find_local_max_ipopt(
         problem=problem, model_type=model_type, rhs_only=True
     )
 
-    # initial values and required number of experiments
-    try:
-        n_experiments_min = (
-            len(model_formula.terms) + 3 - n_zero_eigvals(problem, model_formula)
-        )
-        if n_experiments is None:
-            n_experiments = n_experiments_min
-        elif n_experiments < n_experiments_min:
+    # check if there are NChooseK constraints that must be ignored when sampling with opti.Problem.sample_inputs
+    _problem = problem
+    if problem.n_constraints > 0:
+        if any([isinstance(c, opti.NChooseK) for c in problem.constraints]) and not all(
+            [isinstance(c, opti.NChooseK) for c in problem.constraints]
+        ):
             warnings.warn(
-                f"The minimum number of experiments is {n_experiments_min}, but the current setting is n_experiments={n_experiments}."
+                "Sampling of points fulfilling this problem's constraints is not implemented."
             )
-        x0 = problem.sample_inputs(n_experiments).values.reshape(-1)
 
-    except Exception:
-        # in case of exceptions only consider linear constraints
+            _constraints = []
+            for c in problem.constraints:
+                if not isinstance(c, opti.NChooseK):
+                    _constraints.append(c)
+            _problem = opti.Problem(
+                inputs=problem.inputs, outputs=problem.outputs, constraints=_constraints
+            )
+
+    # determine number of experiments
+    n_experiments_min = (
+        len(model_formula.terms) + 3 - n_zero_eigvals(_problem, model_formula)
+    )
+    if n_experiments is None:
+        n_experiments = n_experiments_min
+    elif n_experiments < n_experiments_min:
         warnings.warn(
-            "Sampling of points fulfilling this problem's constraints is not implemented."
+            f"The minimum number of experiments is {n_experiments_min}, but the current setting is n_experiments={n_experiments}."
         )
 
-        _constraints = []
-        for c in problem.constraints:
-            if not isinstance(c, opti.NChooseK):
-                _constraints.append(c)
-        _problem = opti.Problem(
-            inputs=problem.inputs, outputs=problem.outputs, constraints=_constraints
-        )
-
-        n_experiments_min = (
-            len(model_formula.terms) + 3 - n_zero_eigvals(_problem, model_formula)
-        )
-        if n_experiments is None:
-            n_experiments = n_experiments_min
-        elif n_experiments < n_experiments_min:
-            warnings.warn(
-                f"The minimum number of experiments is {n_experiments_min}, but the current setting is n_experiments={n_experiments}."
-            )
-        x0 = _problem.sample_inputs(n_experiments).values.reshape(-1)
+    # initital values
+    if issubclass(sampling, Sampling):
+        x0 = sampling(_problem).sample(n_experiments)
+    else:
+        x0 = sampling
 
     # get objective function
     objective = get_objective(problem, model_type, delta=delta)

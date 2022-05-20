@@ -3,6 +3,7 @@ import opti
 import pytest
 
 from doe.design import find_local_max_ipopt, get_objective, logD
+from doe.sampling import CornerSampling, OptiSampling, ProbabilitySimplexSampling
 from doe.utils import get_formula_from_string, n_zero_eigvals
 
 
@@ -101,3 +102,16 @@ def test_find_local_max_ipopt_results():
         assert any([np.allclose(row, o, atol=1e-2) for o in opt])
     for o in opt[:-1]:
         assert any([np.allclose(o, row, atol=1e-2) for row in A.to_numpy()])
+
+
+def test_find_local_max_ipopt_sampling():
+    #define problem
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i}", [0, 1]) for i in range(3)],
+        outputs=[opti.Continuous("y")],
+    )
+
+    #test sampling methods
+    A = find_local_max_ipopt(problem, "linear", sampling=OptiSampling)
+    A = find_local_max_ipopt(problem, "linear", sampling=CornerSampling)
+    A = find_local_max_ipopt(problem, "linear", sampling=ProbabilitySimplexSampling)
