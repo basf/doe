@@ -1,10 +1,12 @@
-import opti
-import numpy as np
 from itertools import combinations, product
 
-#TODO: docs anpassen
+import numpy as np
+import opti
 
-class Sampling():
+# TODO: docs anpassen
+
+
+class Sampling:
     """Base class for sampling initial values for minimize_ipopt"""
 
     def __init__(self, problem: opti.Problem):
@@ -48,16 +50,16 @@ class CornerSampling(Sampling):
             A numpy.ndarray, flattened version of the drawn samples.
         """
         D = self.problem.n_inputs
-        
+
         # get all cornerpoints
-        corners = np.array(list(product(*[[0,1] for i in range(D)])))
+        corners = np.array(list(product(*[[0, 1] for i in range(D)])))
         np.random.shuffle(corners)
 
         x0 = np.zeros(shape=(n_experiments, D))
 
         # draw samples
         for i in range(n_experiments):
-            x0[i,:] = corners[i % len(corners)]
+            x0[i, :] = corners[i % len(corners)]
 
         return x0.flatten()
 
@@ -70,9 +72,11 @@ class ProbabilitySimplexSampling(Sampling):
         self.check_problem_bounds()
 
     def check_problem_bounds(self):
-        lb = self.problem.inputs.bounds.loc["min",:].to_numpy()
+        lb = self.problem.inputs.bounds.loc["min", :].to_numpy()
         if not np.allclose(lb, 0):
-            raise ValueError("problem has invalid bounds for ProbabilitySimplexSampling")
+            raise ValueError(
+                "problem has invalid bounds for ProbabilitySimplexSampling"
+            )
 
     def sample(self, n_experiments, n_nonzero_components: int = None):
         """
@@ -92,12 +96,14 @@ class ProbabilitySimplexSampling(Sampling):
         if n_nonzero_components is None:
             n_nonzero_components = D
 
-        x0 = np.zeros(shape=(n_experiments,D))
+        x0 = np.zeros(shape=(n_experiments, D))
 
         # corner points
         corners = np.random.permutation(np.arange(D))
-        
-        nonzero_components = np.array([c for c in combinations(np.arange(D), r=n_nonzero_components)])
+
+        nonzero_components = np.array(
+            [c for c in combinations(np.arange(D), r=n_nonzero_components)]
+        )
         np.random.shuffle(nonzero_components)
 
         # sample points
@@ -105,16 +111,20 @@ class ProbabilitySimplexSampling(Sampling):
             ind_nonzero_components = i % len(nonzero_components)
 
             if i < D:
-                x0[i,corners[i]] = 1
+                x0[i, corners[i]] = 1
             else:
                 values_row = np.random.rand(n_nonzero_components)
                 values_row /= np.linalg.norm(values_row, 1)
-                x0[np.repeat([i], n_nonzero_components), nonzero_components[ind_nonzero_components]] = values_row
+                x0[
+                    np.repeat([i], n_nonzero_components),
+                    nonzero_components[ind_nonzero_components],
+                ] = values_row
 
-        ub = self.problem.inputs.bounds.loc["max",:].to_numpy()
-        for (i,bound) in enumerate(ub):
-            x0[:,i] *= bound
+        ub = self.problem.inputs.bounds.loc["max", :].to_numpy()
+        for (i, bound) in enumerate(ub):
+            x0[:, i] *= bound
 
         return x0.flatten()
 
-#TODO: MixedSampling
+
+# TODO: MixedSampling

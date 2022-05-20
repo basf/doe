@@ -105,13 +105,13 @@ def test_find_local_max_ipopt_results():
 
 
 def test_find_local_max_ipopt_sampling():
-    #define problem
+    # define problem
     problem = opti.Problem(
         inputs=[opti.Continuous(f"x{i}", [0, 1]) for i in range(3)],
         outputs=[opti.Continuous("y")],
     )
 
-    #test sampling methods
-    A = find_local_max_ipopt(problem, "linear", sampling=OptiSampling)
-    A = find_local_max_ipopt(problem, "linear", sampling=CornerSampling)
-    A = find_local_max_ipopt(problem, "linear", sampling=ProbabilitySimplexSampling)
+    # test sampling methods
+    find_local_max_ipopt(problem, "linear", sampling=OptiSampling)
+    find_local_max_ipopt(problem, "linear", sampling=CornerSampling)
+    find_local_max_ipopt(problem, "linear", sampling=ProbabilitySimplexSampling)
