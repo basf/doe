@@ -16,6 +16,7 @@ Additionally, constraints on the values of the decision variables can be taken i
 
 * linear equality: $\sum x_i = 1$
 * linear inequality: $2 x_1 \leq x_2$
+* non-linear equality: $\sum x_i^2 = 1$
 * non-linear inequality: $\sum x_i^2 \leq 1$
 * n-choose-k: only $k$ out of $n$ parameters can take non-zero values.
 

@@ -135,11 +135,13 @@ def constraints_as_scipy_constraints(
 
     # check if nchoosek constraint linearization can be done
     if linearize_NChooseK:
-        check_nchoosek_constraints_linearizable(problem)
-        warnings.warn(
-            "linearized versions of NChooseK constraints are based on heuristics \
-            and may result in unexpected behavior."
-        )
+        if problem.n_constraints > 0:
+            if any([isinstance(c, opti.NChooseK) for c in problem.constraints]):
+                check_nchoosek_constraints_linearizable(problem)
+                warnings.warn(
+                    "linearized versions of NChooseK constraints are based on heuristics \
+                    and may result in unexpected behavior."
+                )
 
     # reformulate constraints
     constraints = []
