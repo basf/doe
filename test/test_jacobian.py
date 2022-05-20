@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from formulaic import Formula
 
-from doe.JacobianForLogdet import JacobianForLogdet, default_jacobian_building_block
+from doe.jacobian import JacobianForLogdet, default_jacobian_building_block
 
 
 def test_default_jacobian_building_block():

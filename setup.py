@@ -19,7 +19,7 @@ setup(
     packages=["doe"],
     install_requires=[
         "loguru",
-        "mopti==0.10.8",
+        "mopti",
         "pandas",
         "scipy",
         "numpy",
