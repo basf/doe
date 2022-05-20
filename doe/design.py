@@ -57,7 +57,6 @@ def get_objective(
     return objective
 
 
-# TODO: docs aktualisieren
 def find_local_max_ipopt(
     problem: opti.Problem,
     model_type: Union[str, Formula],
@@ -127,10 +126,10 @@ def find_local_max_ipopt(
         )
 
     # initital values
-    if issubclass(sampling, Sampling):
-        x0 = sampling(_problem).sample(n_experiments)
-    else:
+    if isinstance(sampling, np.ndarray):
         x0 = sampling
+    else:
+        x0 = sampling(_problem).sample(n_experiments)
 
     # get objective function
     objective = get_objective(problem, model_type, delta=delta)

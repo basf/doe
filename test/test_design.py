@@ -39,7 +39,8 @@ def test_find_local_max_ipopt_nchoosek():
         - n_zero_eigvals(problem=problem, model_type="linear")
         + 3
     )
-    A = find_local_max_ipopt(problem, "linear")
+    with pytest.warns(UserWarning):
+        A = find_local_max_ipopt(problem, "linear")
     assert A.shape == (N, D)
 
 
@@ -115,3 +116,5 @@ def test_find_local_max_ipopt_sampling():
     find_local_max_ipopt(problem, "linear", sampling=OptiSampling)
     find_local_max_ipopt(problem, "linear", sampling=CornerSampling)
     find_local_max_ipopt(problem, "linear", sampling=ProbabilitySimplexSampling)
+    sampling = np.zeros(shape=(10, 3)).flatten()
+    find_local_max_ipopt(problem, "linear", n_experiments=10, sampling=sampling)
