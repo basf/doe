@@ -8,7 +8,10 @@ class Sampling:
     """Base class for sampling initial values for minimize_ipopt"""
 
     def __init__(self, problem: opti.Problem):
-        """TODO: docstring"""
+        """
+        Args:
+            problem (opti.Problem): problem defining the design space to sample from.
+        """
         self.problem = problem
 
     def sample(self, n_experiments: int):
@@ -19,7 +22,10 @@ class OptiSampling(Sampling):
     """Sampling using the sampling method from opti corresponding to the given problem."""
 
     def __init__(self, problem: opti.Problem):
-        """TODO: docstring"""
+        """
+        Args:
+            problem (opti.Problem): problem defining the design space to sample from.
+        """
         super().__init__(problem)
 
     def sample(self, n_experiments):
@@ -37,6 +43,10 @@ class CornerSampling(Sampling):
     """Sampling from the corner points of the hypercubical domain defined by the inputs' bounds"""
 
     def __init__(self, problem: opti.Problem):
+        """
+        Args:
+            problem (opti.Problem): problem defining the design space to sample from.
+        """
         super().__init__(problem)
 
     def sample(self, n_experiments):
@@ -66,6 +76,10 @@ class ProbabilitySimplexSampling(Sampling):
     """Sampling from simplices that are derived from probability simplices by scaling axes with a constant positive factor"""
 
     def __init__(self, problem: opti.Problem):
+        """
+        Args:
+            problem (opti.Problem): problem defining the design space to sample from.
+        """
         super().__init__(problem)
         self.check_problem_bounds()
 
