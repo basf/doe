@@ -3,8 +3,6 @@ from itertools import combinations, product
 import numpy as np
 import opti
 
-# TODO: docs anpassen
-
 
 class Sampling:
     """Base class for sampling initial values for minimize_ipopt"""
