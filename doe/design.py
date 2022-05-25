@@ -12,6 +12,7 @@ from doe.jacobian import JacobianForLogdet
 from doe.sampling import OptiSampling, Sampling
 from doe.utils import (
     constraints_as_scipy_constraints,
+    nchoosek_constraints_as_bounds,
     get_formula_from_string,
     metrics,
     n_zero_eigvals,
@@ -56,7 +57,7 @@ def get_objective(
 
     return objective
 
-
+#TODO: änderungen testen
 def find_local_max_ipopt(
     problem: opti.Problem,
     model_type: Union[str, Formula],
@@ -64,7 +65,7 @@ def find_local_max_ipopt(
     tol: float = 0,
     delta: float = 1e-7,
     ipopt_options: Dict = {},
-    linearize_NChooseK: bool = True,
+    nchoosek_handling: str = "as_bounds",
     jacobian_building_block: Callable = None,
     sampling: Union[Sampling, np.ndarray] = OptiSampling,
 ) -> pd.DataFrame:
@@ -79,8 +80,12 @@ def find_local_max_ipopt(
         tol (float): Tolerance for linear/NChooseK constraint violation. Default value is 0.
         delta (float): Regularization parameter. Default value is 1e-3.
         ipopt_options (Dict): options for IPOPT. For more information see [this link](https://coin-or.github.io/Ipopt/OPTIONS.html)
-        linearize_NChooseK (bool): Tries to replace NChooseK constraints by linear constraints if set
-            to True. For details see nchoosek_constraint_as_scipy_linear_constraint() function. Default value is True.
+        nchoosek_handling (str): Keyword determining the constraint handling. Possible values are 
+            "as_nonlinear_constraint", "as_linear_constraint", "as_bounds". In case of "as_nonlinear_constraint"
+            the original structure of the constraint is preserved, for "as_linear_constraint" NChooseK 
+            constraints are (if possible) replaced by a linear constraint. For details see 
+            nchoosek_constraint_as_scipy_linear_constraint. If set to "as_bounds" NChooseK constraints are integrated into
+            the bounds if possible. Default value is "as_bounds".
         jacobian_building_block (Callable): Only needed for models of higher order than 3. derivatives
             of each model term with respect to each input variable.
         sampling (Sampling, np.ndarray): Sampling class or a np.ndarray object containing the initial guess.
@@ -90,11 +95,11 @@ def find_local_max_ipopt(
         local optimum.
 
     """
-
     D = problem.n_inputs
     model_formula = get_formula_from_string(
         problem=problem, model_type=model_type, rhs_only=True
     )
+    assert nchoosek_handling in ["as_nonlinear_constraint", "as_linear_constraint", "as_bounds"], f"{nchoosek_handling} is not a valid keyword for nchoosek_handling parameter."
 
     # check if there are NChooseK constraints that must be ignored when sampling with opti.Problem.sample_inputs
     _problem = problem
@@ -144,9 +149,19 @@ def find_local_max_ipopt(
     )
 
     # write constraints as scipy constraints
+    keywords = {
+        "as_nonlinear_constraint":"as_nonlinear_constraint",
+        "as_linear_constraint":"as_linear_constraint",
+        "as_bounds":"ignore"
+    }
     constraints = constraints_as_scipy_constraints(
-        problem, n_experiments, tol, linearize_NChooseK
+        problem, n_experiments, tol, nchoosek_handling=keywords[nchoosek_handling]
     )
+
+    # find bounds imposing NChooseK constraints
+    bounds = [p.bounds for p in problem.inputs] * n_experiments
+    if nchoosek_handling == "as_bounds":
+        bounds = nchoosek_constraints_as_bounds(problem, n_experiments)
 
     # set ipopt options
     _ipopt_options = {"maxiter": 500, "disp": 0}
@@ -159,7 +174,7 @@ def find_local_max_ipopt(
     result = minimize_ipopt(
         objective,
         x0=x0,
-        bounds=[(p.bounds) for p in problem.inputs] * n_experiments,
+        bounds=bounds,
         # "SLSQP" has no deeper meaning here and just ensures correct constraint standardization
         constraints=standardize_constraints(constraints, x0, "SLSQP"),
         options=_ipopt_options,

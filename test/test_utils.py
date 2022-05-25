@@ -11,6 +11,7 @@ from doe.utils import (
     JacobianNChooseK,
     a_optimality,
     check_nchoosek_constraints_linearizable,
+    check_nchoosek_constraints_as_bounds,
     constraints_as_scipy_constraints,
     d_optimality,
     g_efficiency,
@@ -18,6 +19,7 @@ from doe.utils import (
     metrics,
     n_zero_eigvals,
     nchoosek_constraint_as_scipy_linear_constraint,
+    nchoosek_constraints_as_bounds,
 )
 
 
@@ -287,7 +289,7 @@ def test_constraints_as_scipy_constraints():
         ]
     ).flatten()
 
-    constraints = constraints_as_scipy_constraints(problem, n_experiments)
+    constraints = constraints_as_scipy_constraints(problem, n_experiments, nchoosek_handling="as_nonlinear_constraint")
 
     assert isinstance(constraints[0], NonlinearConstraint)
     assert len(constraints[0].lb) == n_experiments
@@ -309,10 +311,9 @@ def test_constraints_as_scipy_constraints():
     n_experiments = 7
 
     np.random.seed(1)
-    with pytest.warns(UserWarning):
-        constraints = constraints_as_scipy_constraints(
-            problem, n_experiments, linearize_NChooseK=True
-        )
+    constraints = constraints_as_scipy_constraints(
+        problem, n_experiments, nchoosek_handling="as_linear_constraint"
+    )
 
     A = np.array(
         [
@@ -362,9 +363,28 @@ def test_constraints_as_scipy_constraints():
 
     with pytest.raises(ValueError):
         constraints = constraints_as_scipy_constraints(
-            problem, n_experiments, linearize_NChooseK=True
+            problem, n_experiments, nchoosek_handling="as_linear_constraint"
         )
 
+    # problem with NChooseK constraints: ignore
+    inputs = opti.Parameters([opti.Continuous(f"x{i}", [-1, 1]) for i in range(4)])
+    problem = opti.Problem(
+        inputs=inputs,
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.NChooseK(inputs.names, max_active=2)],
+    )
+    n_experiments = 1
+
+    constraints = constraints_as_scipy_constraints(
+        problem, n_experiments, nchoosek_handling="ignore"
+    )
+    assert len(constraints) == 0
+
+    # problem with NChooseK constraints: invalid nchoosek_handling
+    with pytest.raises(AssertionError):
+        constraints = constraints_as_scipy_constraints(
+            problem, n_experiments, nchoosek_handling="invalid_keyword"
+        )
 
 def test_JacobianNChooseK():
 
@@ -697,3 +717,98 @@ def test_nchoosek_as_scipy_linear_constraint():
     assert np.allclose(linear_constraint.A, A)
     assert np.allclose(linear_constraint.ub, [1e-3])
     assert np.allclose(linear_constraint.lb, [-np.inf])
+
+def test_check_nchoosek_constraints_as_bounds():
+    # define problem: possible to formulate as bounds, no NChooseK constraints
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [0, 1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+    )
+    check_nchoosek_constraints_as_bounds(problem)
+
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [-1, 1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[],
+    )
+    check_nchoosek_constraints_as_bounds(problem)
+
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [None, 1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.LinearEquality(names=["x1", "x2"])],
+    )
+    check_nchoosek_constraints_as_bounds(problem)
+
+    # define problem: possible to formulate as bounds, with NChooseK and other constraints
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [-i, 1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.LinearEquality(names=["x1", "x2"]),
+            opti.LinearInequality(names=["x3", "x4"]),
+            opti.NChooseK(names=["x1", "x2"], max_active=1),
+            opti.NChooseK(names=["x3", "x4"], max_active=1),
+        ],
+    )
+    check_nchoosek_constraints_as_bounds(problem)
+
+    # define problem: not possible to formulate as bounds, invalid bounds
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [0.1, 1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.NChooseK(names=["x1", "x2"], max_active=1),
+        ],
+    )
+    with pytest.raises(ValueError):
+        check_nchoosek_constraints_as_bounds(problem)
+
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [-1, -0.1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.NChooseK(names=["x1", "x2"], max_active=1),
+        ],
+    )
+    with pytest.raises(ValueError):
+        check_nchoosek_constraints_as_bounds(problem)
+
+    # define problem: not possible to formulate as bounds, names parameters of two NChooseK overlap
+    problem = opti.Problem(
+        inputs=[opti.Continuous(f"x{i+1}", [0, 1]) for i in range(4)],
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.NChooseK(names=["x1", "x2"], max_active=1),
+            opti.NChooseK(names=["x2", "x3", "x4"], max_active=2),
+        ],
+    )
+    with pytest.raises(ValueError):
+        check_nchoosek_constraints_as_bounds(problem)
+
+
+def test_nchoosek_constraints_as_bounds():
+    # define problem: no NChooseK constraints
+    problem = opti.Problem(
+        inputs = [opti.Continuous(f"x{i+1}", [-1,1]) for i in range(5)],
+        outputs = [opti.Continuous("y")],
+    )
+    bounds = nchoosek_constraints_as_bounds(problem, n_experiments=4)
+    assert len(bounds) == 20
+    _bounds = [p.bounds for p in problem.inputs] * 4
+    for i in range(20):
+        assert _bounds[i] == bounds[i]
+
+    # define problem: with NChooseK constraints
+    # define problem: no NChooseK constraints
+    problem = opti.Problem(
+        inputs = [opti.Continuous(f"x{i+1}", [-1,1]) for i in range(5)],
+        outputs = [opti.Continuous("y")],
+        constraints= [opti.NChooseK(["x1","x2","x3"], max_active=1)]
+    )
+    np.random.seed(1)
+    bounds = nchoosek_constraints_as_bounds(problem, n_experiments=4)
+    _bounds = [(0.0, 0.0), (0.0, 0.0), (-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0), (0.0, 0.0), (0.0, 0.0), (-1.0, 1.0), (-1.0, 1.0), (0.0, 0.0), (-1.0, 1.0), (0.0, 0.0), (-1.0, 1.0), (-1.0, 1.0), (0.0, 0.0), (0.0, 0.0), (-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0)]
+    assert len(bounds) == 20
+    for i in range(20):
+        assert _bounds[i] == bounds[i]
