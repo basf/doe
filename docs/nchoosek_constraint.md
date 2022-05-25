@@ -1,5 +1,8 @@
 # Tentative NChooseK constraint support
 
+!!! warning
+    This way of handling NChooseK constraint is not the latest anymore. By default, find_local_max_ipopt is using nchoosek_handling="as_bounds" now. This causes IPOPT to not change decision variables that have been set to 0 in the beginning because of NChooseK constraints.
+
 doe also supports problems with NChooseK constraints. Since IPOPT has problems finding feasible solutions
 using the gradient of the NChooseK constraint violation, a closely related linear constraint that suffices
 to fulfill the NChooseK constraint is generated and used for the optimization instead: For each experiment $j$
@@ -46,7 +49,7 @@ res = find_local_max_ipopt(
     problem=problem,
     model_type="fully-quadratic",
     ipopt_options={"maxiter":500, "disp":5},
-    linearize_NChooseK=True,
+    nchoosek_handling="as_linear_constraint",
 )
 ```
 
