@@ -3,25 +3,29 @@ from itertools import combinations, product
 import numpy as np
 import opti
 
-# TODO: docs anpassen
-
 
 class Sampling:
     """Base class for sampling initial values for minimize_ipopt"""
 
-    def __init__(self, problem: opti.Problem):
-        """TODO: docstring"""
+    def __init__(self, problem: opti.Problem) -> None:
+        """
+        Args:
+            problem (opti.Problem): problem defining the design space to sample from
+        """
         self.problem = problem
 
-    def sample(self, n_experiments: int):
+    def sample(self, n_experiments: int) -> np.ndarray:
         raise NotImplementedError
 
 
 class OptiSampling(Sampling):
     """Sampling using the sampling method from opti corresponding to the given problem."""
 
-    def __init__(self, problem: opti.Problem):
-        """TODO: docstring"""
+    def __init__(self, problem: opti.Problem) -> None:
+        """
+        Args:
+            problem (opti.Problem): problem defining the design space to sample from
+        """
         super().__init__(problem)
 
     def sample(self, n_experiments):
@@ -38,10 +42,14 @@ class OptiSampling(Sampling):
 class CornerSampling(Sampling):
     """Sampling from the corner points of the hypercubical domain defined by the inputs' bounds"""
 
-    def __init__(self, problem: opti.Problem):
+    def __init__(self, problem: opti.Problem) -> None:
+        """
+        Args:
+            problem (opti.Problem): problem defining the design space to sample from
+        """
         super().__init__(problem)
 
-    def sample(self, n_experiments):
+    def sample(self, n_experiments) -> np.ndarray:
         """
         Args:
             n_experiments (int): Number of samples to draw.
@@ -67,18 +75,24 @@ class CornerSampling(Sampling):
 class ProbabilitySimplexSampling(Sampling):
     """Sampling from simplices that are derived from probability simplices by scaling axes with a constant positive factor"""
 
-    def __init__(self, problem: opti.Problem):
+    def __init__(self, problem: opti.Problem) -> None:
+        """
+        Args:
+            problem (opti.Problem): problem defining the design space to sample from
+        """
         super().__init__(problem)
         self.check_problem_bounds()
 
-    def check_problem_bounds(self):
+    def check_problem_bounds(self) -> None:
         lb = self.problem.inputs.bounds.loc["min", :].to_numpy()
         if not np.allclose(lb, 0):
             raise ValueError(
                 "problem has invalid bounds for ProbabilitySimplexSampling"
             )
 
-    def sample(self, n_experiments, n_nonzero_components: int = None):
+    def sample(
+        self, n_experiments: int, n_nonzero_components: int = None
+    ) -> np.ndarray:
         """
         First samples from the corner points of the simplex, then random points where all but n_nonzero_components vanish.
         If the upper bounds are not equal for all inputs the resulting distribution will not be uniform, but the density is higher
@@ -124,7 +138,10 @@ class ProbabilitySimplexSampling(Sampling):
         for (i, bound) in enumerate(ub):
             x0[:, i] *= bound
 
+        # shuffle points
+        np.random.shuffle(x0)
+
         return x0.flatten()
 
 
-# TODO: MixedSampling
+# TODO: Mixed Sampling
