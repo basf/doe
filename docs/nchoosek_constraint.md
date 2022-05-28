@@ -1,14 +1,13 @@
 # Tentative NChooseK constraint support
 
 doe also supports problems with NChooseK constraints. Since IPOPT has problems finding feasible solutions
-using the gradient of the NChooseK constraint violation, a closely related linear constraint that suffices
-to fulfill the NChooseK constraint is generated and used for the optimization instead: For each experiment $j$
+using the gradient of the NChooseK constraint violation, a closely related (but stricter) constraint that suffices
+to fulfill the NChooseK constraint is imposed onto the problem: For each experiment $j$
 N-K decision variables $x_{i_1,j},...,x_{i_{N-K,j}}$ from the NChooseK constraints' names attribute are picked
-that are forced to be zero. Given the design $x$ is expressed as one lone vector, the linear constraint can then be written as
-$$
-(0,...,0,x_{i_1,1},0,...,0,x_{i_{N-K},n_{exp}},0,...,0) \cdot x \leq 0
-$$
-However, this linear constraint is stricter than the original NChooseK constraint. In combination with other
+that are forced to be zero. This is done by setting the upper and lower bounds of the picked variables are set to 0
+in the corresponding experiments. This causes IPOPT to treat them as "fixed variables" (i.e. it will not optimize for them)
+and will always stick to the only feasible value (which is 0 here).
+However, this constraint is stricter than the original NChooseK constraint. In combination with other
 constraints on the same decision variables this can result in a situation where the constraints cannot be fulfilled
 even though the original constraints would allow for a solution. For example consider a problem with three decision
 variables $x_1, x_2, x_3, x_4$, an NChooseK constraint on all three variable that restricts the number of active constraints
@@ -22,7 +21,7 @@ it is impossible to fulfill the linear constraint $x_3 + x_4 \geq 0.1$ since $x_
 
 Therefore one has to be very careful when imposing linear constraints upon decision variables that already show up in an NChooseK constraint.
 
-For practical reasons it necessary that the lower bounds of variables affected by NChooseK constraints are zero and the two NChooseK constraints must not share any variables.
+For practical reasons it necessary that two NChooseK constraints of the same problem must not share any variables.
 
 You can find an example for a problem with NChooseK constraints and additional linear constraints imposed on the same variables.
 
@@ -46,7 +45,6 @@ res = find_local_max_ipopt(
     problem=problem,
     model_type="fully-quadratic",
     ipopt_options={"maxiter":500, "disp":5},
-    linearize_NChooseK=True,
 )
 ```
 

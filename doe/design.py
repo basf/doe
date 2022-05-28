@@ -14,7 +14,7 @@ from doe.utils import (
     constraints_as_scipy_constraints,
     get_formula_from_string,
     metrics,
-    n_zero_eigvals,
+    nchoosek_constraints_as_bounds,
 )
 
 
@@ -64,9 +64,9 @@ def find_local_max_ipopt(
     tol: float = 0,
     delta: float = 1e-7,
     ipopt_options: Dict = {},
-    linearize_NChooseK: bool = True,
-    jacobian_building_block: Callable = None,
+    jacobian_building_block: Optional[Callable] = None,
     sampling: Union[Sampling, np.ndarray] = OptiSampling,
+    fixed_experiments: Optional[np.ndarray] = None,
 ) -> pd.DataFrame:
     """Function computing a d-optimal design" for a given opti problem and model.
 
@@ -79,18 +79,17 @@ def find_local_max_ipopt(
         tol (float): Tolerance for linear/NChooseK constraint violation. Default value is 0.
         delta (float): Regularization parameter. Default value is 1e-3.
         ipopt_options (Dict): options for IPOPT. For more information see [this link](https://coin-or.github.io/Ipopt/OPTIONS.html)
-        linearize_NChooseK (bool): Tries to replace NChooseK constraints by linear constraints if set
-            to True. For details see nchoosek_constraint_as_scipy_linear_constraint() function. Default value is True.
         jacobian_building_block (Callable): Only needed for models of higher order than 3. derivatives
             of each model term with respect to each input variable.
         sampling (Sampling, np.ndarray): Sampling class or a np.ndarray object containing the initial guess.
+        fixed_experiments (np.ndarray): numpy array containing experiments that will definitely part of the design.
+            Values are set before the optimization.
 
     Returns:
         A pd.DataFrame object containing the best found input for the experiments. This is only a
         local optimum.
 
     """
-
     D = problem.n_inputs
     model_formula = get_formula_from_string(
         problem=problem, model_type=model_type, rhs_only=True
@@ -115,9 +114,7 @@ def find_local_max_ipopt(
             )
 
     # determine number of experiments
-    n_experiments_min = (
-        len(model_formula.terms) + 3 - n_zero_eigvals(_problem, model_formula)
-    )
+    n_experiments_min = len(model_formula.terms) + 3
     if n_experiments is None:
         n_experiments = n_experiments_min
     elif n_experiments < n_experiments_min:
@@ -144,9 +141,18 @@ def find_local_max_ipopt(
     )
 
     # write constraints as scipy constraints
-    constraints = constraints_as_scipy_constraints(
-        problem, n_experiments, tol, linearize_NChooseK
-    )
+    constraints = constraints_as_scipy_constraints(problem, n_experiments, tol)
+
+    # find bounds imposing NChooseK constraints
+    bounds = nchoosek_constraints_as_bounds(problem, n_experiments)
+
+    # fix experiments if any are given
+    if fixed_experiments is not None:
+        fixed_experiments = np.array(fixed_experiments)
+        check_fixed_experiments(problem, n_experiments, fixed_experiments)
+        for i, val in enumerate(fixed_experiments.flatten()):
+            bounds[i] = (val, val)
+            x0[i] = val
 
     # set ipopt options
     _ipopt_options = {"maxiter": 500, "disp": 0}
@@ -159,7 +165,7 @@ def find_local_max_ipopt(
     result = minimize_ipopt(
         objective,
         x0=x0,
-        bounds=[(p.bounds) for p in problem.inputs] * n_experiments,
+        bounds=bounds,
         # "SLSQP" has no deeper meaning here and just ensures correct constraint standardization
         constraints=standardize_constraints(constraints, x0, "SLSQP"),
         options=_ipopt_options,
@@ -181,3 +187,26 @@ def find_local_max_ipopt(
         print("metrics:", d)
 
     return A
+
+
+def check_fixed_experiments(
+    problem: opti.Problem, n_experiments: int, fixed_experiments: np.ndarray
+) -> None:
+    """Checks if the shape of the fixed experiments is correct and if the number of fixed experiments is valid
+    Args:
+        problem (opti.Problem): problem defining the input variables used for the check.
+        n_experiments (int): total number of experiments in the design that fixed_experiments are part of.
+        fixed_experiments (np.ndarray): fixed experiment proposals to be checked.
+    """
+
+    n_fixed_experiments, D = np.array(fixed_experiments).shape
+
+    if n_fixed_experiments >= n_experiments:
+        raise ValueError(
+            "For starting the optimization the total number of experiments must be larger that the number of fixed experiments."
+        )
+
+    if D != problem.n_inputs:
+        raise ValueError(
+            f"Invalid shape of fixed_experiments. Length along axis 1 is {D}, but must be {problem.n_inputs}"
+        )
