@@ -113,7 +113,6 @@ def n_zero_eigvals(
     return len(eigvals) - len(eigvals[eigvals > epsilon])
 
 
-# TODO: docs ändern --> nchoosek_handlinf
 def constraints_as_scipy_constraints(
     problem: opti.Problem,
     n_experiments: int,
