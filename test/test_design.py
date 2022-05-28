@@ -39,18 +39,9 @@ def test_find_local_max_ipopt_nchoosek():
         - n_zero_eigvals(problem=problem, model_type="linear")
         + 3
     )
-    
-    A = find_local_max_ipopt(problem, "linear", nchoosek_handling="as_linear_constraint")
-    assert A.shape == (N, D)
 
-    A = find_local_max_ipopt(problem, "linear", nchoosek_handling="as_bounds")
+    A = find_local_max_ipopt(problem, "linear")
     assert A.shape == (N, D)
-
-    A = find_local_max_ipopt(problem, "linear", nchoosek_handling="as_nonlinear_constraint")
-    assert A.shape == (N, D)
-
-    with pytest.raises(AssertionError):
-        A = find_local_max_ipopt(problem, "linear", nchoosek_handling="invalid_keyword")
 
 
 def test_find_local_max_ipopt_mixture():

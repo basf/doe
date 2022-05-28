@@ -112,37 +112,25 @@ def n_zero_eigvals(
 
     return len(eigvals) - len(eigvals[eigvals > epsilon])
 
-#TODO: Webseite aktualisieren --> nchoosek_handling
+
+# TODO: docs ändern --> nchoosek_handlinf
 def constraints_as_scipy_constraints(
     problem: opti.Problem,
     n_experiments: int,
     tol: float = 1e-3,
-    nchoosek_handling: str = "as_linear_constraint",
 ) -> List:
-    """Formulates opti constraints as scipy constraints.
+    """Formulates opti constraints as scipy constraints. Ignores NchooseK constraints
+    (these can be formulated as bounds).
 
     Args:
         problem (opti.Problem): problem whose constraints should be formulated as scipy constraints.
         n_experiments (int): Number of instances of inputs for problem that are evaluated together.
         tol (float): Tolerance for the computation of the constraint violation. Default value is 1e-3.
-        nchoosek_handling (str): Keyword determining the constraint handling. Possible values are 
-            'as_nonlinear_constraint', 'as_linear_constraint', 'ignore'. In case of 'as_nonlinear_constraint'
-            the original structure of the constraint is preserved, for 'as_linear_constraint' NChooseK 
-            constraints are (if possible) replaced by a linear constraint. For details see 
-            nchoosek_constraint_as_scipy_linear_constraint. If set to 'ignore' NChooseK constraints are ignored.
-            Default value is 'as_linear_constraint'.
 
     Returns:
         A list of scipy constraints corresponding to the constraints of the given opti problem.
     """
     D = problem.n_inputs
-    assert nchoosek_handling in ["as_nonlinear_constraint", "as_linear_constraint", "ignore"], f"{nchoosek_handling} is not a valid keyword for nchoosek_handling parameter."
-
-    # check if nchoosek constraint linearization can be done
-    if nchoosek_handling == "as_linear_constraint":
-        if problem.n_constraints > 0:
-            if any([isinstance(c, opti.NChooseK) for c in problem.constraints]):
-                check_nchoosek_constraints_linearizable(problem)
 
     # reformulate constraints
     constraints = []
@@ -212,32 +200,7 @@ def constraints_as_scipy_constraints(
             constraints.append(NonlinearConstraint(fun, lb, ub))
 
         elif isinstance(c, opti.NChooseK):
-
-            if nchoosek_handling=="as_linear_constraint":
-                # convert NChooseK constraint to linear constraint
-                constr = nchoosek_constraint_as_scipy_linear_constraint(
-                    constraint=c,
-                    names=problem.inputs.names,
-                    n_experiments=n_experiments,
-                    tol=tol,
-                )
-
-                constraints.append(constr)
-
-            elif nchoosek_handling=="as_nonlinear_constraint":
-                # write upper/lower bound as vector
-                lb = -np.inf * np.ones(n_experiments)
-                ub = np.zeros(n_experiments)
-
-                # define constraint evaluation
-                fun = ConstraintWrapper(constraint=c, problem=problem, tol=tol)
-
-                # define constraint gradients
-                jac = JacobianNChooseK(
-                    constraint=c, problem=problem, n_experiments=n_experiments, tol=tol
-                )
-
-                constraints.append(NonlinearConstraint(fun, lb, ub, jac=jac))
+            pass
 
         else:
             raise NotImplementedError(f"No implementation for this constraint: {c}")
@@ -270,69 +233,6 @@ class ConstraintWrapper:
         x[np.abs(x) < self.tol] = 0
         x = pd.DataFrame(x.reshape(len(x) // self.D, self.D), columns=self.names)
         return self.constraint(x).to_numpy()
-
-
-class JacobianNChooseK:
-    """Jacobian for NChooseK constraints."""
-
-    def __init__(
-        self,
-        constraint: opti.NChooseK,
-        problem: opti.Problem,
-        n_experiments: int,
-        tol: float = 1e-3,
-    ) -> None:
-        """
-        Args:
-            constraint (opti.NChooseK): NChooseK constraint whose gradient should be computed.
-            problem (opti.Problem): problem whose constraints should be formulated as scipy constraints.
-            n_experiments (int): Number of instances of inputs for problem that are evaluated together.
-            tol (float): Tolerance for the computation of the constraint violation. Default value is 1e-3.
-
-        Returns:
-            A function that returns the gradient of constraint for a given input.
-
-        """
-        self.constraint = constraint
-        self.n_experiments = n_experiments
-        self.tol = tol
-        self.D = problem.n_inputs
-
-    def __call__(self, x: np.ndarray) -> np.ndarray:
-        """Jacobian for the NChooseK constriant."""
-        x = x.reshape(len(x) // self.D, self.D)
-
-        # randomly permute columns
-        permutation = np.random.permutation(self.D)
-        x = x[:, permutation]
-
-        # find correct order of entries
-        ind = np.argsort(-np.abs(x), axis=1)[:, self.constraint.max_active :]
-
-        # mask for sign
-        mask = -2 * np.array(x < 0, dtype=int) + 1
-
-        # set to zero where below threshold
-        x[np.abs(x) < self.tol] = 0
-
-        # set gradient value
-        j = np.zeros(shape=x.shape, dtype=int)
-        np.put_along_axis(j, ind, 1, axis=1)
-        j[x == 0] = 0
-        j *= mask
-
-        # invert permutation of columns
-        _permutation = np.zeros(self.D, dtype=int)
-        for i in range(self.D):
-            _permutation[permutation[i]] = i
-        j = j[:, _permutation]
-
-        # write jacobian into larger matrix (where x is interpreted as a long vector)
-        J = np.zeros(shape=(self.n_experiments, self.D * self.n_experiments))
-        for i in range(self.n_experiments):
-            J[i, i * self.D : (i + 1) * self.D] = j[i]
-
-        return J
 
 
 def d_optimality(X: np.ndarray, tol=1e-9) -> float:
@@ -426,91 +326,9 @@ def metrics(
     )
 
 
-def nchoosek_constraint_as_scipy_linear_constraint(
-    constraint: opti.NChooseK, names: List, n_experiments: int, tol: float = 1e-3
-) -> LinearConstraint:
-    """Determines a linear constraint that is closely related to the NChooseK constraint.
-    Only works under strict restrictions: The parameters in the constraints' names attribute
-    must have a domain of the form [0, xu] where xu > 0. If more than one NChooseK constraint
-    of a problem refers to the same parameter, this method cannot be used. For each experiment it
-    chooses (N-K) inputs from the NChooseK constraints' names list and creates a linear constraint
-    that forces these inputs to be zero.
-
-    Args:
-        constraint (opti.NChooseK): constraint to be formulated as linear constraint.
-        names (List): list of names of the input values of the corresponding problem
-        n_experiments (int): number of experiments for the design to be determined.
-
-
-    Returns:
-        A scipy.LinearConstraint being a sufficient condition for the NChooseK constraint if
-        all conditions on the NChooseK constraint are met.
-    """
-    n_inactive = len(constraint.names) - constraint.max_active
-
-    # find indices of constraint.names in names
-    ind = [i for i, p in enumerate(names) if p in constraint.names]
-
-    # find and shuffle all combinations of elements of ind of length max_active
-    ind = np.array([c for c in combinations(ind, r=n_inactive)])
-    np.random.shuffle(ind)
-
-    # set up linear constraint matrix
-    A = np.zeros(shape=(1, len(names) * n_experiments))
-
-    for i in range(n_experiments):
-        ind_vanish = ind[i % len(ind)]
-        A[0, ind_vanish + i * len(names)] = 1
-    A /= np.sqrt(n_inactive * n_experiments)
-
-    # write lower/upper bounds as vector
-    lb = -np.inf * np.ones(1)
-    ub = np.zeros(1) + tol
-
-    return LinearConstraint(A, lb, ub)
-
-
-def check_nchoosek_constraints_linearizable(problem: opti.Problem) -> None:
-    """Checks if NChooseK constraints of problem can be linearized.
-    
-    Args:
-        problem (opti.Problem): problem whose NChooseK constraints should be checked
-    """
-    # collect NChooseK constraints
-    if problem.n_constraints == 0:
-        return
-
-    nchoosek_constraints = []
-    for c in problem.constraints:
-        if isinstance(c, opti.NChooseK):
-            nchoosek_constraints.append(c)
-
-    if len(nchoosek_constraints) == 0:
-        return
-
-    # check if the domains of all NCHooseK constraints are compatible to linearization
-    parameter_names = np.unique(np.concatenate([c.names for c in nchoosek_constraints]))
-    for name in parameter_names:
-        if problem.inputs[name].domain[0] != 0:
-            raise ValueError(
-                f"Constraint {c} cannot be linearized. Lower bound of domain must be 0."
-            )
-
-    # check if the parameter names of two nchoose overlap
-    for c in nchoosek_constraints:
-        for _c in nchoosek_constraints:
-            if c != _c:
-                for name in c.names:
-                    if name in _c.names:
-                        raise ValueError(
-                            f"Problem {problem} cannot be used for linearization. \
-                            names attribute of NChooseK constraints must be pairwise disjoint."
-                        )
-
-
 def check_nchoosek_constraints_as_bounds(problem: opti.Problem) -> None:
     """Checks if NChooseK constraints of problem can be formulated as bounds.
-    
+
     Args:
         problem (opti.Problem): problem whose NChooseK constraints should be checked
     """
@@ -550,19 +368,19 @@ def nchoosek_constraints_as_bounds(
     problem: opti.Problem,
     n_experiments: int,
 ) -> List:
-    """Determines the box bounds for the decision variables     
+    """Determines the box bounds for the decision variables
 
     Args:
         problem (opti.Problem): problem to find the bounds for.
         n_experiments (int): number of experiments for the design to be determined.
 
     Returns:
-        A list of tuples containing bounds that respect NChooseK constraint imposed 
+        A list of tuples containing bounds that respect NChooseK constraint imposed
         onto the decision variables.
     """
     check_nchoosek_constraints_as_bounds(problem)
 
-    #bounds without NChooseK constraints
+    # bounds without NChooseK constraints
     bounds = np.array([(p.bounds) for p in problem.inputs] * n_experiments)
 
     if problem.n_constraints > 0:
@@ -572,7 +390,11 @@ def nchoosek_constraints_as_bounds(
                 n_inactive = len(constraint.names) - constraint.max_active
 
                 # find indices of constraint.names in names
-                ind = [i for i, p in enumerate(problem.inputs.names) if p in constraint.names]
+                ind = [
+                    i
+                    for i, p in enumerate(problem.inputs.names)
+                    if p in constraint.names
+                ]
 
                 # find and shuffle all combinations of elements of ind of length max_active
                 ind = np.array([c for c in combinations(ind, r=n_inactive)])
@@ -581,7 +403,7 @@ def nchoosek_constraints_as_bounds(
                 # set bounds to zero in each experiments for the variables that should be inactive
                 for i in range(n_experiments):
                     ind_vanish = ind[i % len(ind)]
-                    bounds[ind_vanish + i * len(problem.inputs.names), :] = [0,0]
+                    bounds[ind_vanish + i * len(problem.inputs.names), :] = [0, 0]
 
     # convert bounds to list of tuples
     bounds = [(b[0], b[1]) for b in bounds]
