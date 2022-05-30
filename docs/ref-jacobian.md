@@ -1,3 +1,1 @@
-# JacobianForLogdet
-
 ::: doe.jacobian

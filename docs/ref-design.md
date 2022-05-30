@@ -1,3 +1,1 @@
-# design
-
 ::: doe.design

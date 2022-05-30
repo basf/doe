@@ -47,7 +47,7 @@ deploy-pages:
   image: $IMAGE_LATEST
   script:
   - pip3 install .
-  - pip3 install mkdocs mkdocs-material mkdocstrings
+  - pip3 install mkdocs mkdocs-material mkdocstrings mkdocstings-python-legacy
   - mkdocs build -d public
   artifacts:
     paths:

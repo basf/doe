@@ -16,9 +16,10 @@ nav:
     - Multiple mixture constraints: multiple_mixture_constraints.md
     - Performance compared to modde: modde_comparison.md
   - Code Reference:
-    - ref-design.md
-    - ref-jacobian.md
-    - ref-utils.md
+    - design: ref-design.md
+    - utils: ref-utils.md
+    - sampling: ref-sampling.md
+    - jacobian: ref-jacobian.md
 
 theme:
   name: material
@@ -31,8 +32,6 @@ theme:
 plugins:
   - search
   - mkdocstrings:
-      watch:  # watch for changes when serving locally
-        - doe
 
 markdown_extensions:
   - pymdownx.arithmatex:
