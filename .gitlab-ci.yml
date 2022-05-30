@@ -2,15 +2,10 @@ image: registry.roqs.basf.net/base-images/python:latest
 
 variables:
   NEXUS_URL: https://nexus.roqs.basf.net/repository/python-hosted/
-  HTTP_PROXY: http://serverproxy.basf.net:8080/
-  HTTPS_PROXY: http://serverproxy.basf.net:8080/
-  CI_REGISTRY: registry.roqs.basf.net
-  IMAGE_TAG: ${CI_REGISTRY}/${CI_REGISTRY_NAMESPACE}/ipopt:${CI_PIPELINE_ID}
-  IMAGE_LATEST: ${CI_REGISTRY}/${CI_REGISTRY_NAMESPACE}/ipopt:latest
+  IMAGE_LATEST: registry.roqs.basf.net/brain/ipopt:latest
 
 stages:
   - check
-  - build
   - test
   - deploy
 
@@ -21,19 +16,6 @@ style-check:
     - black --check doe test
     - flake8 --verbose doe test
     - isort . --check-only --verbose
-
-build-image:
-  only:
-    - build-image
-  stage: build
-  image: registry.roqs.basf.net/docker:stable
-  tags:
-    - docker
-  script:
-    - docker login -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_TOKEN} ${CI_REGISTRY}
-    - docker build --tag $IMAGE_TAG --tag $IMAGE_LATEST --no-cache --build-arg=http_proxy="${HTTP_PROXY}" --build-arg=https_proxy="${HTTP_PROXY}" .
-    - docker push $IMAGE_TAG
-    - docker push $IMAGE_LATEST
 
 test:
   stage: test
@@ -70,4 +52,3 @@ deploy-pages:
   artifacts:
     paths:
     - public
-
