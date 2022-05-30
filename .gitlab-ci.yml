@@ -9,42 +9,41 @@ stages:
   - test
   - deploy
 
-# style-check:
-#   stage: check
-#   script:
-#     - pip3 install black isort flake8
-#     - black --check doe test
-#     - flake8 --verbose doe test
-#     - isort . --check-only --verbose
+style-check:
+  stage: check
+  script:
+    - pip3 install black isort flake8
+    - black --check doe test
+    - flake8 --verbose doe test
+    - isort . --check-only --verbose
 
-# test:
-#   stage: test
-#   image: $IMAGE_LATEST
-#   script:
-#     - pip3 install .
-#     - pip3 install pytest pytest-cov coverage
-#     - pytest --cov-report term-missing --cov=doe test
-#     - coverage xml
+test:
+  stage: test
+  image: $IMAGE_LATEST
+  script:
+    - pip3 install .
+    - pip3 install pytest pytest-cov coverage
+    - pytest --cov-report term-missing --cov=doe test
+    - coverage xml
 
-# deploy-nexus:
-#   stage: deploy
-#   only:
-#     - main
-#   script:
-#     - pip3 install twine setuptools wheel
-#     - export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-#     - |
-#       echo -e "[distutils]\nindex-servers = pypi\n[pypi]\nrepository: ${NEXUS_URL}\nusername: ${NEXUS_USER}\npassword: ${NEXUS_PWD}\n" > $HOME/.pypirc
-#     - python3 setup.py sdist bdist_wheel
-#     - twine upload dist/*
-#   artifacts:
-#     paths:
-#       - build/
-#       - dist/
+deploy-nexus:
+  stage: deploy
+  only:
+    - main
+  script:
+    - pip3 install twine setuptools wheel
+    - export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+    - |
+      echo -e "[distutils]\nindex-servers = pypi\n[pypi]\nrepository: ${NEXUS_URL}\nusername: ${NEXUS_USER}\npassword: ${NEXUS_PWD}\n" > $HOME/.pypirc
+    - python3 setup.py sdist bdist_wheel
+    - twine upload dist/*
+  artifacts:
+    paths:
+      - build/
+      - dist/
 
 pages:
   stage: deploy
-  image: registry.roqs.basf.net/base-images/mkdocs:latest
   script:
   - pip3 install .
   - pip3 install -r requirements-docs.txt
