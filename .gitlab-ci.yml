@@ -51,4 +51,4 @@ deploy-pages:
   - mkdocs build -d public
   artifacts:
     paths:
-    - public
+      - public
