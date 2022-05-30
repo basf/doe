@@ -15,11 +15,6 @@ nav:
     - Tentative NChooseK constraint support: nchoosek_constraint.md
     - Multiple mixture constraints: multiple_mixture_constraints.md
     - Performance compared to modde: modde_comparison.md
-  - Code Reference:
-    - design: ref-design.md
-    - utils: ref-utils.md
-    - sampling: ref-sampling.md
-    - jacobian: ref-jacobian.md
 
 theme:
   name: material
