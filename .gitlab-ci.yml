@@ -44,7 +44,7 @@ stages:
 
 deploy-pages:
   stage: deploy
-  # image: $IMAGE_LATEST
+  image: registry.roqs.basf.net/base-images/mkdocs:latest
   script:
   - pip3 install .
   - pip3 install -r requirements-docs.txt
