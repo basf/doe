@@ -42,7 +42,7 @@ stages:
 #       - build/
 #       - dist/
 
-deploy-pages:
+pages:
   stage: deploy
   image: registry.roqs.basf.net/base-images/mkdocs:latest
   script:
