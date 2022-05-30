@@ -18,12 +18,13 @@ setup(
     description="Advanced & flexible design of experiments",
     packages=["doe"],
     install_requires=[
+        "cyipopt",
+        "formulaic",
         "loguru",
         "mopti",
+        "numpy",
         "pandas",
         "scipy",
-        "numpy",
-        "formulaic",
     ],
     python_requires=">=3.6",
 )
