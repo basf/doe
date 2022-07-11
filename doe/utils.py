@@ -22,8 +22,8 @@ class ProblemHelper():
 
     def transform2relaxed(self)-> opti.Problem:
         """Transforms an opti.problem with Categorical variables into its relaxed version.
-            Categorical variables are transformed into their one-hot encoding taking values taking 
-            discrete values 0 or 1. Then, one-hot encoded variables are relaxed to take values 
+            Categorical variables are transformed into their one-hot encoding taking values taking
+            discrete values 0 or 1. Then, one-hot encoded variables are relaxed to take values
             between 0 and 1, while fulfilling the constraint, that they have to sum up to 1.
 
         Returns:
