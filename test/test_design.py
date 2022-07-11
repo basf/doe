@@ -125,7 +125,7 @@ def test_find_local_max_ipopt_mixed_runs():
     problem_helper = ProblemHelper(problem=problem)
     problem = problem_helper.transform2relaxed()
     np.random.seed(1)
-    A = find_local_max_ipopt(problem, "linear", n_experiments=12)
+    find_local_max_ipopt(problem, "linear", n_experiments=12)
 
 
 def test_find_local_max_ipopt_sampling():
