@@ -30,31 +30,6 @@ def test_get_objective():
     assert np.allclose(objective(x), -np.log(4) - np.log(1e-7))
 
 
-def test_get_objective_categorical():
-    inputs = [opti.Categorical(f"x{i+1}", ["a", "b"]) for i in range(2)]
-    problem = opti.Problem(
-        inputs=inputs,
-        outputs=[opti.Continuous("y")],
-    )
-
-    problem_helper = ProblemHelper(problem=problem)
-    objective = get_objective(problem_helper.transform2relaxed(), "linear")
-
-    x = np.array(
-        [
-            1,
-            0,
-            1,
-            0,
-            0,
-            1,
-            1,
-            0,
-        ]
-    )
-    assert np.allclose(objective(x), -np.log(4) - np.log(1e-7))
-
-
 def test_find_local_max_ipopt_nchoosek():
     # Design for a problem with an n-choose-k constraint
     inputs = opti.Parameters([opti.Continuous(f"x{i}", [0, 1]) for i in range(4)])
@@ -129,6 +104,28 @@ def test_find_local_max_ipopt_results():
         assert any([np.allclose(row, o, atol=1e-2) for o in opt])
     for o in opt:
         assert any([np.allclose(o, row, atol=1e-2) for row in A.to_numpy()])
+
+
+def test_find_local_max_ipopt_mixed_runs():
+    # define problem: no NChooseK constraints
+    inputs = opti.Parameters([opti.Continuous(f"x{i+1}", [0, 1]) for i in range(3)])
+    inputs.append(opti.Categorical(f"x{4}", ["a", "b"]))
+    inputs.append(opti.Categorical(f"x{5}", ["c", "d"]))
+    problem = opti.Problem(
+        inputs=inputs,
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.LinearEquality(names=["x1", "x2"], rhs=1),
+            opti.LinearInequality(["x2"], lhs=[-1], rhs=-0.1),
+            opti.LinearInequality(["x1", "x2"], lhs=[5, 4], rhs=3.9),
+            opti.LinearInequality(["x1", "x2"], lhs=[-20, 5], rhs=-3),
+        ],
+    )
+
+    problem_helper = ProblemHelper(problem=problem)
+    problem = problem_helper.transform2relaxed()
+    np.random.seed(1)
+    A = find_local_max_ipopt(problem, "linear", n_experiments=12)
 
 
 def test_find_local_max_ipopt_sampling():
