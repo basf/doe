@@ -9,7 +9,7 @@ from doe.design import (
     logD,
 )
 from doe.sampling import CornerSampling, OptiSampling, ProbabilitySimplexSampling
-from doe.utils import get_formula_from_string, n_zero_eigvals, ProblemHelper
+from doe.utils import ProblemHelper, get_formula_from_string, n_zero_eigvals
 
 
 def test_logD():
