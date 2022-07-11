@@ -11,9 +11,9 @@ from formulaic import Formula
 from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 
-class ProblemHelper():
+class ProblemHelper:
     def __init__(self, problem: opti.Problem) -> None:
-        """ Helper for Problem transformations
+        """Helper for Problem transformations
         Args:
             problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
         """
@@ -37,26 +37,29 @@ class ProblemHelper():
             if isinstance(input, Continuous):
                 new_inputs.append(input)
             if isinstance(input, Categorical):
-                var_names = [col.replace('§', '') for col in input.to_onehot_encoding(pd.Series("dummy")).columns]
+                var_names = [
+                    col.replace("§", "")
+                    for col in input.to_onehot_encoding(pd.Series("dummy")).columns
+                ]
                 for name in var_names:
                     new_inputs.append(opti.Continuous(name, [0, 1]))
                 new_constraints.append(opti.LinearEquality(names=var_names, rhs=1))
         problem = opti.Problem(
             inputs=new_inputs,
             outputs=self._problem.outputs,
-            constraints=new_constraints
+            constraints=new_constraints,
         )
         return problem
 
 
-class FormulaProvider():
+class FormulaProvider:
     def __init__(
         self,
         model_type: Union[str, Formula] = "linear",
         problem: Optional[opti.Problem] = None,
         rhs_only: bool = True,
     ) -> None:
-        """ Provider of formulas
+        """Provider of formulas
         Args:
             model_type (str or Formula): A formula containing all model terms.
             problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
@@ -121,7 +124,9 @@ class FormulaProvider():
 
         return formula
 
-    def linear_formula(self,) -> str :
+    def linear_formula(
+        self,
+    ) -> str:
         """Reformulates a string describing a linear-model or certain keywords as Formula objects.
 
         Args:
@@ -130,11 +135,15 @@ class FormulaProvider():
         Returns:
             A string describing the model that was given as string or keyword.
         """
-        assert (self.problem is not None), "If the model is described by a keyword a problem must be provided"
+        assert (
+            self.problem is not None
+        ), "If the model is described by a keyword a problem must be provided"
         formula = "".join([input.name + " + " for input in self.problem.inputs])
         return formula
 
-    def linear_and_quadratic_formula(self,) -> str :
+    def linear_and_quadratic_formula(
+        self,
+    ) -> str:
         """Reformulates a string describing a linear-and-quadratic model or certain keywords as Formula objects.
 
         Args:
@@ -143,14 +152,18 @@ class FormulaProvider():
         Returns:
             A string describing the model that was given as string or keyword.
         """
-        assert (self.problem is not None), "If the model is described by a keyword a problem must be provided."
+        assert (
+            self.problem is not None
+        ), "If the model is described by a keyword a problem must be provided."
         formula = "".join([input.name + " + " for input in self.problem.inputs])
         formula += "".join(
             ["{" + input.name + "**2} + " for input in self.problem.inputs]
         )
         return formula
 
-    def linear_and_interactions_formula(self,) -> str:
+    def linear_and_interactions_formula(
+        self,
+    ) -> str:
         """Reformulates a string describing a linear-and-interactions model or certain keywords as Formula objects.
 
         Args:
@@ -159,16 +172,23 @@ class FormulaProvider():
         Returns:
             A string describing the model that was given as string or keyword.
         """
-        assert (self.problem is not None), "If the model is described by a keyword a problem must be provided."
+        assert (
+            self.problem is not None
+        ), "If the model is described by a keyword a problem must be provided."
         formula = "".join([input.name + " + " for input in self.problem.inputs])
         for i in range(self.problem.n_inputs):
             for j in range(i):
                 formula += (
-                    self.problem.inputs.names[j] + ":" + self.problem.inputs.names[i] + " + "
+                    self.problem.inputs.names[j]
+                    + ":"
+                    + self.problem.inputs.names[i]
+                    + " + "
                 )
         return formula
 
-    def fully_quadratic_formula(self,) -> str:
+    def fully_quadratic_formula(
+        self,
+    ) -> str:
         """Reformulates a string describing a fully-quadratic model or certain keywords as Formula objects.
 
         Args:
@@ -177,12 +197,17 @@ class FormulaProvider():
         Returns:
             A string describing the model that was given as string or keyword.
         """
-        assert (self.problem is not None), "If the model is described by a keyword a problem must be provided."
+        assert (
+            self.problem is not None
+        ), "If the model is described by a keyword a problem must be provided."
         formula = "".join([input.name + " + " for input in self.problem.inputs])
         for i in range(self.problem.n_inputs):
             for j in range(i):
                 formula += (
-                    self.problem.inputs.names[j] + ":" + self.problem.inputs.names[i] + " + "
+                    self.problem.inputs.names[j]
+                    + ":"
+                    + self.problem.inputs.names[i]
+                    + " + "
                 )
         formula += "".join(
             ["{" + input.name + "**2} + " for input in self.problem.inputs]
@@ -196,10 +221,11 @@ def n_zero_eigvals(
     """Determine the number of eigenvalues of the information matrix that are necessarily zero because of
     equality constraints."""
 
-    formula_provider = FormulaProvider(model_type=model_type, problem=problem, rhs_only=True)
-    # sample points (fulfilling the constraints)
-    model_formula = formula_provider.get_formula_from_string(
+    formula_provider = FormulaProvider(
+        model_type=model_type, problem=problem, rhs_only=True
     )
+    # sample points (fulfilling the constraints)
+    model_formula = formula_provider.get_formula_from_string()
     N = len(model_formula.terms) + 3
     X = problem.sample_inputs(N)
 
