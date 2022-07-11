@@ -1,3 +1,4 @@
+from ast import Str
 import sys
 import warnings
 from itertools import combinations
@@ -5,103 +6,175 @@ from typing import List, Optional, Union
 
 import numpy as np
 import opti
+from opti import Continuous,Categorical
 import pandas as pd
 from formulaic import Formula
 from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 
-def get_formula_from_string(
-    model_type: Union[str, Formula] = "linear",
-    problem: Optional[opti.Problem] = None,
-    rhs_only: bool = True,
-) -> Formula:
-    """Reformulates a string describing a model or certain keywords as Formula objects.
+class ProblemTransformer():
+    def __init__(self, problem: opti.Problem):
+        self._problem = problem
 
-    Args:
-        model_type (str or Formula): A formula containing all model terms.
-        problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
-            Only needed if the model is defined by a keyword
-        rhs_only (bool): The function returns only the right hand side of the formula if set to True.
-
-    Returns:
-        A Formula object describing the model that was given as string or keyword.
-    """
-    # set maximum recursion depth to higher value
-    recursion_limit = sys.getrecursionlimit()
-    sys.setrecursionlimit(2000)
-
-    if isinstance(model_type, Formula):
-        return model_type
-
-    # build model if a keyword and a problem are given.
-    else:
-        # linear model
-        if model_type == "linear":
-            assert (
-                problem is not None
-            ), "If the model is described by a keyword a problem must be provided"
-            formula = "".join([input.name + " + " for input in problem.inputs])
-
-        # linear and interactions model
-        elif model_type == "linear-and-quadratic":
-            assert (
-                problem is not None
-            ), "If the model is described by a keyword a problem must be provided."
-            formula = "".join([input.name + " + " for input in problem.inputs])
-            formula += "".join(
-                ["{" + input.name + "**2} + " for input in problem.inputs]
-            )
-
-        # linear and quadratic model
-        elif model_type == "linear-and-interactions":
-            assert (
-                problem is not None
-            ), "If the model is described by a keyword a problem must be provided."
-            formula = "".join([input.name + " + " for input in problem.inputs])
-            for i in range(problem.n_inputs):
-                for j in range(i):
-                    formula += (
-                        problem.inputs.names[j] + ":" + problem.inputs.names[i] + " + "
-                    )
-
-        # fully quadratic model
-        elif model_type == "fully-quadratic":
-            assert (
-                problem is not None
-            ), "If the model is described by a keyword a problem must be provided."
-            formula = "".join([input.name + " + " for input in problem.inputs])
-            for i in range(problem.n_inputs):
-                for j in range(i):
-                    formula += (
-                        problem.inputs.names[j] + ":" + problem.inputs.names[i] + " + "
-                    )
-            formula += "".join(
-                ["{" + input.name + "**2} + " for input in problem.inputs]
-            )
-
+    def transform2relaxed(self)-> opti.Problem:
+        new_inputs = []
+        if self._problem.constraints:
+            new_constraints = self._problem.constraints
         else:
-            formula = model_type + "   "
+            new_constraints = []
+        for input in self._problem.inputs:
+            if isinstance(input,Continuous):
+                new_inputs.append(input)
+            if isinstance(input, Categorical):
+                var_names = [col.replace('§','') for col in input.to_onehot_encoding(pd.Series("dummy")).columns]
+                for name in var_names:
+                    new_inputs.append(opti.Continuous(name,[0,1]))
+                new_constraints.append(opti.LinearEquality(names=var_names, rhs=1))
+            else: 
+                None
+        problem = opti.Problem(
+            inputs=new_inputs,
+            outputs=self._problem.outputs,
+            constraints=new_constraints
+        )
+        return problem
 
-    formula = Formula(formula[:-3])
+class FormulaProvider():
+    def __init__(
+        self,
+        model_type: Union[str, Formula] = "linear",
+        problem: Optional[opti.Problem] = None,
+        rhs_only: bool = True,
+    ) -> None:
+        """ Provider of formulas
+        Args:
+            model_type (str or Formula): A formula containing all model terms.
+            problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
+            Only needed if the model is defined by a keyword
+            rhs_only (bool): The function returns only the right hand side of the formula if set to True.
 
-    if rhs_only:
-        if hasattr(formula, "rhs"):
-            formula = formula.rhs
+        """
+        self.model_type = model_type
+        self.problem = problem
+        self.rhs_only = rhs_only
 
-    # set recursion limit to old value
-    sys.setrecursionlimit(recursion_limit)
+    def get_formula_from_string(
+        self,
+    ) -> Formula:
+        """Reformulates a string describing a model or certain keywords as Formula objects.
 
-    return formula
+        Args:
+            model_type (str or Formula): A formula containing all model terms.
+            problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
+                Only needed if the model is defined by a keyword
+            rhs_only (bool): The function returns only the right hand side of the formula if set to True.
 
+        Returns:
+            A Formula object describing the model that was given as string or keyword.
+        """
+        # set maximum recursion depth to higher value
+        recursion_limit = sys.getrecursionlimit()
+        sys.setrecursionlimit(2000)
+
+        if isinstance(self.model_type, Formula):
+            return self.model_type
+
+        # build model if a keyword and a problem are given.
+        else:
+            # linear model
+            if self.model_type == "linear":
+                formula = self.linear_formula()
+
+            # linear and interactions model
+            elif self.model_type == "linear-and-quadratic":
+                formula = self.linear_and_quadratic_formula()
+
+            # linear and quadratic model
+            elif self.model_type == "linear-and-interactions":
+                formula = self.linear_and_interactions_formula()
+
+            # fully quadratic model
+            elif self.model_type == "fully-quadratic":
+                formula = self.fully_quadratic_formula()
+
+            else:
+                formula = self.model_type + "   "
+        print(formula)
+        formula = Formula(formula[:-3])
+
+        if self.rhs_only:
+            if hasattr(formula, "rhs"):
+                formula = formula.rhs
+
+        # set recursion limit to old value
+        sys.setrecursionlimit(recursion_limit)
+
+        return formula
+
+
+    def linear_formula(self,) ->str :
+        assert (
+                self.problem is not None
+            ), "If the model is described by a keyword a problem must be provided"
+        formula =  ""
+        for input in self.problem.inputs:
+            if isinstance(input, Categorical):
+                for col in input.to_onehot_encoding(pd.Series("dummy")).columns:
+                    formula =  (  formula + "exp(-log(1+exp("+col.replace('§','') +")))" + " + ")
+            if isinstance(input, Continuous):
+                formula +=  (input.name + " + ")
+            else:
+                formula = formula
+        print(formula)
+        return formula
+
+
+    def linear_and_quadratic_formula(self,) ->str :
+        assert (
+                    self.problem is not None
+                ), "If the model is described by a keyword a problem must be provided."
+        formula = "".join([input.name + " + " for input in self.problem.inputs])
+        formula += "".join(
+            ["{" + input.name + "**2} + " for input in self.problem.inputs]
+        )
+        return formula
+
+    def linear_and_interactions_formula(self,) ->str:
+        assert (
+            self.problem is not None
+        ), "If the model is described by a keyword a problem must be provided."
+        formula = "".join([input.name + " + " for input in self.problem.inputs])
+        for i in range(self.problem.n_inputs):
+            for j in range(i):
+                formula += (
+                    self.problem.inputs.names[j] + ":" + self.problem.inputs.names[i] + " + "
+                )
+        return formula
+
+    def fully_quadratic_formula(self,)-> str:
+        assert (
+            self.problem is not None
+        ), "If the model is described by a keyword a problem must be provided."
+        formula = "".join([input.name + " + " for input in self.problem.inputs])
+        for i in range(self.problem.n_inputs):
+            for j in range(i):
+                formula += (
+                    self.problem.inputs.names[j] + ":" + self.problem.inputs.names[i] + " + "
+                )
+        formula += "".join(
+            ["{" + input.name + "**2} + " for input in self.problem.inputs]
+        )
+        return formula
 
 def n_zero_eigvals(
     problem: opti.Problem, model_type: Union[str, Formula], epsilon=1e-7
 ) -> int:
     """Determine the number of eigenvalues of the information matrix that are necessarily zero because of
     equality constraints."""
+
+    formula_provider =  FormulaProvider(model_type=model_type, problem=problem, rhs_only=True)
     # sample points (fulfilling the constraints)
-    model_formula = get_formula_from_string(
-        model_type=model_type, problem=problem, rhs_only=True
+    model_formula = formula_provider.get_formula_from_string(
     )
     N = len(model_formula.terms) + 3
     X = problem.sample_inputs(N)
