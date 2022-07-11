@@ -1,4 +1,3 @@
-from ast import Str
 import sys
 import warnings
 from itertools import combinations
@@ -6,21 +5,21 @@ from typing import List, Optional, Union
 
 import numpy as np
 import opti
-from opti import Continuous,Categorical
+from opti import Continuous, Categorical
 import pandas as pd
 from formulaic import Formula
 from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 
 class ProblemHelper():
-    def __init__(self, problem: opti.Problem)-> None:
+    def __init__(self, problem: opti.Problem) -> None:
         """ Helper for Problem transformations
         Args:
             problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
         """
         self._problem = problem
 
-    def transform2relaxed(self)-> opti.Problem:
+    def transform2relaxed(self) -> opti.Problem:
         """Transforms an opti.problem with Categorical variables into its relaxed version.
             Categorical variables are transformed into their one-hot encoding taking values taking
             discrete values 0 or 1. Then, one-hot encoded variables are relaxed to take values
@@ -35,12 +34,12 @@ class ProblemHelper():
         else:
             new_constraints = []
         for input in self._problem.inputs:
-            if isinstance(input,Continuous):
+            if isinstance(input, Continuous):
                 new_inputs.append(input)
             if isinstance(input, Categorical):
-                var_names = [col.replace('§','') for col in input.to_onehot_encoding(pd.Series("dummy")).columns]
+                var_names = [col.replace('§', '') for col in input.to_onehot_encoding(pd.Series("dummy")).columns]
                 for name in var_names:
-                    new_inputs.append(opti.Continuous(name,[0,1]))
+                    new_inputs.append(opti.Continuous(name, [0, 1]))
                 new_constraints.append(opti.LinearEquality(names=var_names, rhs=1))
         problem = opti.Problem(
             inputs=new_inputs,
@@ -48,6 +47,7 @@ class ProblemHelper():
             constraints=new_constraints
         )
         return problem
+
 
 class FormulaProvider():
     def __init__(
@@ -121,8 +121,7 @@ class FormulaProvider():
 
         return formula
 
-
-    def linear_formula(self,) ->str :
+    def linear_formula(self,) -> str :
         """Reformulates a string describing a linear-model or certain keywords as Formula objects.
 
         Args:
@@ -131,14 +130,11 @@ class FormulaProvider():
         Returns:
             A string describing the model that was given as string or keyword.
         """
-        assert (
-                self.problem is not None
-            ), "If the model is described by a keyword a problem must be provided"
-        formula =  "".join([input.name + " + " for input in self.problem.inputs])
+        assert (self.problem is not None), "If the model is described by a keyword a problem must be provided"
+        formula = "".join([input.name + " + " for input in self.problem.inputs])
         return formula
 
-
-    def linear_and_quadratic_formula(self,) ->str :
+    def linear_and_quadratic_formula(self,) -> str :
         """Reformulates a string describing a linear-and-quadratic model or certain keywords as Formula objects.
 
         Args:
@@ -147,16 +143,14 @@ class FormulaProvider():
         Returns:
             A string describing the model that was given as string or keyword.
         """
-        assert (
-                    self.problem is not None
-                ), "If the model is described by a keyword a problem must be provided."
+        assert (self.problem is not None), "If the model is described by a keyword a problem must be provided."
         formula = "".join([input.name + " + " for input in self.problem.inputs])
         formula += "".join(
             ["{" + input.name + "**2} + " for input in self.problem.inputs]
         )
         return formula
 
-    def linear_and_interactions_formula(self,) ->str:
+    def linear_and_interactions_formula(self,) -> str:
         """Reformulates a string describing a linear-and-interactions model or certain keywords as Formula objects.
 
         Args:
@@ -165,9 +159,7 @@ class FormulaProvider():
         Returns:
             A string describing the model that was given as string or keyword.
         """
-        assert (
-            self.problem is not None
-        ), "If the model is described by a keyword a problem must be provided."
+        assert (self.problem is not None), "If the model is described by a keyword a problem must be provided."
         formula = "".join([input.name + " + " for input in self.problem.inputs])
         for i in range(self.problem.n_inputs):
             for j in range(i):
@@ -176,7 +168,7 @@ class FormulaProvider():
                 )
         return formula
 
-    def fully_quadratic_formula(self,)-> str:
+    def fully_quadratic_formula(self,) -> str:
         """Reformulates a string describing a fully-quadratic model or certain keywords as Formula objects.
 
         Args:
@@ -185,9 +177,7 @@ class FormulaProvider():
         Returns:
             A string describing the model that was given as string or keyword.
         """
-        assert (
-            self.problem is not None
-        ), "If the model is described by a keyword a problem must be provided."
+        assert (self.problem is not None), "If the model is described by a keyword a problem must be provided."
         formula = "".join([input.name + " + " for input in self.problem.inputs])
         for i in range(self.problem.n_inputs):
             for j in range(i):
@@ -199,13 +189,14 @@ class FormulaProvider():
         )
         return formula
 
+
 def n_zero_eigvals(
     problem: opti.Problem, model_type: Union[str, Formula], epsilon=1e-7
 ) -> int:
     """Determine the number of eigenvalues of the information matrix that are necessarily zero because of
     equality constraints."""
 
-    formula_provider =  FormulaProvider(model_type=model_type, problem=problem, rhs_only=True)
+    formula_provider = FormulaProvider(model_type=model_type, problem=problem, rhs_only=True)
     # sample points (fulfilling the constraints)
     model_formula = formula_provider.get_formula_from_string(
     )
