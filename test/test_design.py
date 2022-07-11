@@ -30,10 +30,8 @@ def test_get_objective():
     assert np.allclose(objective(x), -np.log(4) - np.log(1e-7))
 
 
-def test_get_objective_mixed_categorical():
-    inputs = [opti.Categorical(f"x{i+1}", ["a", "b", "c"]) for i in range(3)]
-    for i in range(3):
-        inputs.append(opti.Continuous(f"x{i+3}", [0, 1]))
+def test_get_objective_categorical():
+    inputs = [opti.Categorical(f"x{i+1}", ["a", "b"]) for i in range(3)]
     problem = opti.Problem(
         inputs=inputs,
         outputs=[opti.Continuous("y")],
@@ -42,7 +40,7 @@ def test_get_objective_mixed_categorical():
     problem_helper = ProblemHelper(problem=problem)
     objective = get_objective(problem_helper.transform2relaxed(), "linear")
 
-    x = np.array([1, 0, 0, 0, 1, 0, 0, 0, 1])
+    x = np.array([1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1])
     assert np.allclose(objective(x), -np.log(4) - np.log(1e-7))
 
 
