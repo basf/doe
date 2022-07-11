@@ -9,7 +9,7 @@ from doe.design import (
     logD,
 )
 from doe.sampling import CornerSampling, OptiSampling, ProbabilitySimplexSampling
-from doe.utils import get_formula_from_string, n_zero_eigvals
+from doe.utils import get_formula_from_string, n_zero_eigvals, ProblemHelper
 
 
 def test_logD():
@@ -25,6 +25,22 @@ def test_get_objective():
         outputs=[opti.Continuous("y")],
     )
     objective = get_objective(problem, "linear")
+
+    x = np.array([1, 0, 0, 0, 1, 0, 0, 0, 1])
+    assert np.allclose(objective(x), -np.log(4) - np.log(1e-7))
+
+
+def test_get_objective_mixed_categorical():
+    inputs = [opti.Categorical(f"x{i+1}", ["a", "b", "c"]) for i in range(3)]
+    for i in range(3):
+        inputs.append(opti.Continuous(f"x{i+3}", [0, 1]))
+    problem = opti.Problem(
+        inputs=inputs,
+        outputs=[opti.Continuous("y")],
+    )
+
+    problem_helper = ProblemHelper(problem=problem)
+    objective = get_objective(problem_helper.transform2relaxed(), "linear")
 
     x = np.array([1, 0, 0, 0, 1, 0, 0, 0, 1])
     assert np.allclose(objective(x), -np.log(4) - np.log(1e-7))
