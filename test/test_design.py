@@ -108,11 +108,11 @@ def test_find_local_max_ipopt_results():
 
 def test_find_local_max_ipopt_mixed_runs():
     # define problem: no NChooseK constraints
-    inputs = opti.Parameters([opti.Continuous(f"x{i+1}", [0, 1]) for i in range(3)])
+    inputs = [opti.Continuous(f"x{i+1}", [0, 1]) for i in range(3)]
     inputs.append(opti.Categorical(f"x{4}", ["a", "b"]))
     inputs.append(opti.Categorical(f"x{5}", ["c", "d"]))
     problem = opti.Problem(
-        inputs=inputs,
+        inputs=opti.Parameters(inputs),
         outputs=[opti.Continuous("y")],
         constraints=[
             opti.LinearEquality(names=["x1", "x2"], rhs=1),
