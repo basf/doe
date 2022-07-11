@@ -19,7 +19,7 @@ class ProblemHelper:
         """
         self._problem = problem
 
-    def transform2relaxed(self) -> opti.Problem:
+    def get_relaxed_problem(self) -> opti.Problem:
         """Transforms an opti.problem with Categorical variables into its relaxed version.
             Categorical variables are transformed into their one-hot encoding taking values taking
             discrete values 0 or 1. Then, one-hot encoded variables are relaxed to take values
