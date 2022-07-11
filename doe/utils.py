@@ -21,6 +21,14 @@ class ProblemHelper():
         self._problem = problem
 
     def transform2relaxed(self)-> opti.Problem:
+        """Transforms an opti.problem with Categorical variables into its relaxed version.
+            Categorical variables are transformed into their one-hot encoding taking values taking 
+            discrete values 0 or 1. Then, one-hot encoded variables are relaxed to take values 
+            between 0 and 1, while fulfilling the constraint, that they have to sum up to 1.
+
+        Returns:
+            A string describing the model that was given as string or keyword.
+        """
         new_inputs = []
         if self._problem.constraints:
             new_constraints = self._problem.constraints
@@ -34,8 +42,6 @@ class ProblemHelper():
                 for name in var_names:
                     new_inputs.append(opti.Continuous(name,[0,1]))
                 new_constraints.append(opti.LinearEquality(names=var_names, rhs=1))
-            else: 
-                None
         problem = opti.Problem(
             inputs=new_inputs,
             outputs=self._problem.outputs,
@@ -117,23 +123,30 @@ class FormulaProvider():
 
 
     def linear_formula(self,) ->str :
+        """Reformulates a string describing a linear-model or certain keywords as Formula objects.
+
+        Args:
+            None
+
+        Returns:
+            A string describing the model that was given as string or keyword.
+        """
         assert (
                 self.problem is not None
             ), "If the model is described by a keyword a problem must be provided"
-        formula =  ""
-        for input in self.problem.inputs:
-            if isinstance(input, Categorical):
-                for col in input.to_onehot_encoding(pd.Series("dummy")).columns:
-                    formula =  (  formula + "exp(-log(1+exp("+col.replace('§','') +")))" + " + ")
-            if isinstance(input, Continuous):
-                formula +=  (input.name + " + ")
-            else:
-                None
-        print(formula)
+        formula =  "".join([input.name + " + " for input in self.problem.inputs])
         return formula
 
 
     def linear_and_quadratic_formula(self,) ->str :
+        """Reformulates a string describing a linear-and-quadratic model or certain keywords as Formula objects.
+
+        Args:
+            None
+
+        Returns:
+            A string describing the model that was given as string or keyword.
+        """
         assert (
                     self.problem is not None
                 ), "If the model is described by a keyword a problem must be provided."
@@ -144,6 +157,14 @@ class FormulaProvider():
         return formula
 
     def linear_and_interactions_formula(self,) ->str:
+        """Reformulates a string describing a linear-and-interactions model or certain keywords as Formula objects.
+
+        Args:
+            None
+
+        Returns:
+            A string describing the model that was given as string or keyword.
+        """
         assert (
             self.problem is not None
         ), "If the model is described by a keyword a problem must be provided."
@@ -156,6 +177,14 @@ class FormulaProvider():
         return formula
 
     def fully_quadratic_formula(self,)-> str:
+        """Reformulates a string describing a fully-quadratic model or certain keywords as Formula objects.
+
+        Args:
+            None
+
+        Returns:
+            A string describing the model that was given as string or keyword.
+        """
         assert (
             self.problem is not None
         ), "If the model is described by a keyword a problem must be provided."
