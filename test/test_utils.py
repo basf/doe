@@ -7,12 +7,12 @@ from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 from doe.utils import (
     ConstraintWrapper,
-    get_formula_from_string,
     a_optimality,
     check_nchoosek_constraints_as_bounds,
     constraints_as_scipy_constraints,
     d_optimality,
     g_efficiency,
+    get_formula_from_string,
     metrics,
     n_zero_eigvals,
     nchoosek_constraints_as_bounds,
