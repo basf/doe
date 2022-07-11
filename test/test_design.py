@@ -50,14 +50,6 @@ def test_get_objective_categorical():
             1,
             1,
             0,
-            0,
-            1,
-            0,
-            1,
-            1,
-            0,
-            0,
-            1,
         ]
     )
     assert np.allclose(objective(x), -np.log(4) - np.log(1e-7))
