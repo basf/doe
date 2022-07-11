@@ -12,8 +12,12 @@ from formulaic import Formula
 from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 
-class ProblemTransformer():
-    def __init__(self, problem: opti.Problem):
+class ProblemHelper():
+    def __init__(self, problem: opti.Problem)-> None:
+        """ Helper for Problem transformations
+        Args:
+            problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
+        """
         self._problem = problem
 
     def transform2relaxed(self)-> opti.Problem:
@@ -124,7 +128,7 @@ class FormulaProvider():
             if isinstance(input, Continuous):
                 formula +=  (input.name + " + ")
             else:
-                formula = formula
+                None
         print(formula)
         return formula
 
