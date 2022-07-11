@@ -204,20 +204,24 @@ def test_number_of_model_terms():
         outputs=[opti.Continuous("y")],
     )
 
-    formula = get_formula_from_string(problem=problem, model_type="linear")
+    formula_provider = FormulaProvider(problem=problem, model_type="linear")
+    formula = formula_provider.get_formula_from_string()
     assert len(formula.terms) == 6
 
-    formula = get_formula_from_string(
+    formula_provider = FormulaProvider(
         problem=problem, model_type="linear-and-quadratic"
     )
+    formula = formula_provider.get_formula_from_string()
     assert len(formula.terms) == 11
 
-    formula = get_formula_from_string(
+    formula_provider = FormulaProvider(
         problem=problem, model_type="linear-and-interactions"
     )
+    formula = formula_provider.get_formula_from_string()
     assert len(formula.terms) == 16
 
-    formula = get_formula_from_string(problem=problem, model_type="fully-quadratic")
+    formula_provider = FormulaProvider(problem=problem, model_type="fully-quadratic")
+    formula = formula_provider.get_formula_from_string()
     assert len(formula.terms) == 21
 
 
