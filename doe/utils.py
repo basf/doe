@@ -5,9 +5,9 @@ from typing import List, Optional, Union
 
 import numpy as np
 import opti
-from opti import Continuous, Categorical
 import pandas as pd
 from formulaic import Formula
+from opti import Categorical, Continuous
 from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 
