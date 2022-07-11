@@ -30,7 +30,7 @@ class ProblemHelper:
         """
         new_inputs = []
         if self._problem.constraints:
-            new_constraints = self._problem.constraints
+            new_constraints = [constraint for constraint in self._problem.constraints]
         else:
             new_constraints = []
         for input in self._problem.inputs:
