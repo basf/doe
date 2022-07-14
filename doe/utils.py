@@ -76,7 +76,7 @@ class ProblemProvider:
         model_type: Union[str, Formula] = "linear",
         rhs_only: bool = True,
     ) -> Formula:
-        return self._formula_provider._get_formula_from_string(
+        return self._formula_provider.get_formula_from_string(
             self._problem, model_type, rhs_only, self._cat_list
         )
 
@@ -94,7 +94,7 @@ class FormulaProvider:
 
         """
 
-    def _get_formula_from_string(
+    def get_formula_from_string(
         self,
         problem: Optional[opti.Problem] = None,
         model_type: Union[str, Formula] = "linear",
