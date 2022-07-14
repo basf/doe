@@ -24,7 +24,8 @@ def test_get_objective():
         inputs=[opti.Continuous(f"x{i}", [0, 1]) for i in range(3)],
         outputs=[opti.Continuous("y")],
     )
-    objective = get_objective(problem, "linear")
+    problem_provider = ProblemProvider(problem=problem)
+    objective = get_objective(problem_provider, "linear")
 
     x = np.array([1, 0, 0, 0, 1, 0, 0, 0, 1])
     assert np.allclose(objective(x), -np.log(4) - np.log(1e-7))
@@ -110,10 +111,10 @@ def test_find_local_max_ipopt_results():
             opti.NChooseK(names=["x1", "x2", "x3"], max_active=1),
         ],
     )
-
+    problem_provider = ProblemProvider(problem=problem)
     with pytest.warns(UserWarning):
         A = find_local_max_ipopt(
-            problem, "fully-quadratic", ipopt_options={"maxiter": 100}
+            problem_provider, "fully-quadratic", ipopt_options={"maxiter": 100}
         )
     opt = np.eye(3)
     for row in A.to_numpy():
