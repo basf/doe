@@ -217,10 +217,10 @@ def test_find_local_max_ipopt_fixed_experiments():
             opti.NChooseK(names=["x1", "x2", "x3"], max_active=1),
         ],
     )
-
+    problem_provider = ProblemProvider(problem=problem)
     with pytest.warns(UserWarning):
         A = find_local_max_ipopt(
-            problem,
+            problem_provider,
             "fully-quadratic",
             ipopt_options={"maxiter": 100},
             fixed_experiments=[[1, 0, 0], [0, 1, 0]],

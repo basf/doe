@@ -127,7 +127,7 @@ def test_get_formula_from_string():
 
 
 def test_formula_from_string_with_categoricals():
-    d = 3
+    d = 2
     inputs = [opti.Categorical(f"x{i+1}", ["a", "b", "c"]) for i in range(d)]
     inputs.append(opti.Continuous(f"x{4}", [0, 1]))
     problem = opti.Problem(
@@ -137,34 +137,82 @@ def test_formula_from_string_with_categoricals():
     problem_provider = ProblemProvider(problem)
 
     model_formula = problem_provider.get_formula_from_string(model_type="linear")
-    assert (
-        model_formula
-        == "1 + x1____a + x1____b + x1____c + x2____a + x2____b + x2____c + x3____a + x3____b + x3____c + x4"
-    )
+    # linear and interaction
+    terms = [
+        "1",
+        "x1____a",
+        "x1____b",
+        "x1____c",
+        "x2____a",
+        "x2____b",
+        "x2____c",
+        "x4",
+    ]
+    model_formula = problem_provider.get_formula_from_string(model_type="linear")
+    assert all(term in terms for term in model_formula.terms)
+    assert all(term in model_formula.terms for term in terms)
 
+    terms = [
+        "1",
+        "x1____a",
+        "x1____b",
+        "x1____c",
+        "x2____a",
+        "x2____b",
+        "x2____c",
+        "x4",
+        "x4**2",
+    ]
     model_formula = problem_provider.get_formula_from_string(
         model_type="linear-and-quadratic"
     )
-    assert (
-        model_formula
-        == "1 + x1____a + x1____b + x1____c + x2____a + x2____b + x2____c + x3____a + x3____b + x3____c + x4 + x4**2"
-    )
+    assert all(term in terms for term in model_formula.terms)
+    assert all(term in model_formula.terms for term in terms)
 
+    terms = [
+        "1",
+        "x1____a",
+        "x1____b",
+        "x1____c",
+        "x2____a",
+        "x2____b",
+        "x2____c",
+        "x4",
+        "x1____a:x4",
+        "x1____b:x4",
+        "x1____c:x4",
+        "x2____a:x4",
+        "x2____b:x4",
+        "x2____c:x4",
+    ]
     model_formula = problem_provider.get_formula_from_string(
         model_type="linear-and-interactions"
     )
-    assert (
-        model_formula
-        == "1 + x1____a + x1____b + x1____c + x2____a + x2____b + x2____c + x3____a + x3____b + x3____c + x4 + x1____a:x4 + x1____b:x4 + x1____c:x4 + x2____a:x4 + x2____b:x4 + x2____c:x4 + x3____a:x4 + x3____b:x4 + x3____c:x4"
-    )
+    assert all(term in terms for term in model_formula.terms)
+    assert all(term in model_formula.terms for term in terms)
 
+    terms = [
+        "1",
+        "x1____a",
+        "x1____b",
+        "x1____c",
+        "x2____a",
+        "x2____b",
+        "x2____c",
+        "x4",
+        "x1____a:x4",
+        "x1____b:x4",
+        "x1____c:x4",
+        "x2____a:x4",
+        "x2____b:x4",
+        "x2____c:x4",
+        "x4**2",
+    ]
     model_formula = problem_provider.get_formula_from_string(
         model_type="fully-quadratic"
     )
-    assert (
-        model_formula
-        == "1 + x1____a + x1____b + x1____c + x2____a + x2____b + x2____c + x3____a + x3____b + x3____c + x4 + x4**2 + x1____a:x4 + x1____b:x4 + x1____c:x4 + x2____a:x4 + x2____b:x4 + x2____c:x4 + x3____a:x4 + x3____b:x4 + x3____c:x4"
-    )
+    assert all(term in terms for term in model_formula.terms)
+    assert all(term in model_formula.terms for term in terms)
 
 
 def test_n_zero_eigvals_unconstrained():
