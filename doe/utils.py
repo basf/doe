@@ -72,8 +72,8 @@ class ProblemProvider:
         rhs_only: bool = True,
     ) -> Formula:
         return self._formula_provider.get_formula_from_string(
-            problem_provider=self._problem,
             model_type=model_type,
+            problem=self._problem,
             rhs_only=rhs_only,
             exclude_polynomial=self._cat_list,
         )
