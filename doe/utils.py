@@ -91,8 +91,8 @@ class FormulaProvider:
 
     def get_formula_from_string(
         self,
-        problem: Optional[opti.Problem] = None,
         model_type: Union[str, Formula] = "linear",
+        problem: Optional[opti.Problem] = None,
         rhs_only: bool = True,
         exclude_polynomial: List[str] = [],
     ) -> Formula:
@@ -104,6 +104,7 @@ class FormulaProvider:
                 Only needed if the model is defined by a keyword
             rhs_only (bool): The function returns only the right hand side of the formula if set to True.
             Returns:
+            exclude_polynomical (List[str]): List of varriables that should only included in first order.
         A Formula object describing the model that was given as string or keyword.
         """
         # set maximum recursion depth to higher value
@@ -152,7 +153,7 @@ class FormulaProvider:
 
     def _linear_formula(
         self,
-        problem: Optional[opti.Problem] = None,
+        problem: Optional[opti.Problem],
     ) -> str:
         """Reformulates a string describing a linear-model or certain keywords as Formula objects.
             formula = model_type + "   "
@@ -171,7 +172,7 @@ class FormulaProvider:
 
     def _linear_and_quadratic_formula(
         self,
-        problem: Optional[opti.Problem] = None,
+        problem: Optional[opti.Problem],
         exclude_polynomial: List[str] = [],
     ) -> str:
         """Reformulates a string describing a linear-and-quadratic model or certain keywords as Formula objects.
@@ -196,7 +197,7 @@ class FormulaProvider:
 
     def _linear_and_interactions_formula(
         self,
-        problem: Optional[opti.Problem] = None,
+        problem: Optional[opti.Problem],
         exclude_polynomial: List[str] = [],
     ) -> str:
         """Reformulates a string describing a linear-and-interactions model or certain keywords as Formula objects.
@@ -226,7 +227,7 @@ class FormulaProvider:
 
     def _fully_quadratic_formula(
         self,
-        problem: Optional[opti.Problem] = None,
+        problem: Optional[opti.Problem],
         exclude_polynomial: List[str] = [],
     ) -> str:
         """Reformulates a string describing a fully-quadratic model or certain keywords as Formula objects.
