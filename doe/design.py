@@ -4,7 +4,6 @@ from typing import Callable, Dict, Optional, Union
 import numpy as np
 import opti
 import pandas as pd
-
 from cyipopt import minimize_ipopt
 from formulaic import Formula
 from scipy.optimize._minimize import standardize_constraints
@@ -12,8 +11,8 @@ from scipy.optimize._minimize import standardize_constraints
 from doe.jacobian import JacobianForLogdet
 from doe.sampling import OptiSampling, Sampling
 from doe.utils import (
-    constraints_as_scipy_constraints,
     ProblemProvider,
+    constraints_as_scipy_constraints,
     metrics,
     nchoosek_constraints_as_bounds,
 )
