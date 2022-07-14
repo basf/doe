@@ -4,6 +4,7 @@ from typing import Callable, Dict, Optional, Union
 import numpy as np
 import opti
 import pandas as pd
+
 from cyipopt import minimize_ipopt
 from formulaic import Formula
 from scipy.optimize._minimize import standardize_constraints
@@ -12,7 +13,7 @@ from doe.jacobian import JacobianForLogdet
 from doe.sampling import OptiSampling, Sampling
 from doe.utils import (
     constraints_as_scipy_constraints,
-    get_formula_from_string,
+    ProblemProvider,
     metrics,
     nchoosek_constraints_as_bounds,
 )
@@ -24,7 +25,7 @@ def logD(A: np.ndarray, delta: float = 1e-7) -> float:
 
 
 def get_objective(
-    problem: opti.Problem,
+    problem_provider: ProblemProvider,
     model_type: Union[str, Formula],
     delta: float = 1e-7,
 ) -> Callable:
@@ -39,15 +40,17 @@ def get_objective(
         A function computing the objective -logD for a given input vector x
 
     """
-    D = problem.n_inputs
-    model_formula = get_formula_from_string(
-        problem=problem, model_type=model_type, rhs_only=True
+    D = problem_provider.problem.n_inputs
+    model_formula = problem_provider.get_formula_from_string(
+        model_type=model_type, rhs_only=True
     )
 
     # define objective function
     def objective(x):
         # evaluate model terms
-        A = pd.DataFrame(x.reshape(len(x) // D, D), columns=problem.inputs.names)
+        A = pd.DataFrame(
+            x.reshape(len(x) // D, D), columns=problem_provider.problem.inputs.names
+        )
         A = model_formula.get_model_matrix(A)
 
         # compute objective value
@@ -58,7 +61,7 @@ def get_objective(
 
 
 def find_local_max_ipopt(
-    problem: opti.Problem,
+    problem_provider: ProblemProvider,
     model_type: Union[str, Formula],
     n_experiments: Optional[int] = None,
     tol: float = 0,
@@ -90,27 +93,31 @@ def find_local_max_ipopt(
         local optimum.
 
     """
-    D = problem.n_inputs
-    model_formula = get_formula_from_string(
-        problem=problem, model_type=model_type, rhs_only=True
+    D = problem_provider.problem.n_inputs
+    model_formula = problem_provider.get_formula_from_string(
+        model_type=model_type, rhs_only=True
     )
 
     # check if there are NChooseK constraints that must be ignored when sampling with opti.Problem.sample_inputs
-    _problem = problem
-    if problem.n_constraints > 0:
-        if any([isinstance(c, opti.NChooseK) for c in problem.constraints]) and not all(
-            [isinstance(c, opti.NChooseK) for c in problem.constraints]
+    _problem = problem_provider.problem
+    if problem_provider.problem.n_constraints > 0:
+        if any(
+            [isinstance(c, opti.NChooseK) for c in problem_provider.problem.constraints]
+        ) and not all(
+            [isinstance(c, opti.NChooseK) for c in problem_provider.problem.constraints]
         ):
             warnings.warn(
                 "Sampling of points fulfilling this problem's constraints is not implemented."
             )
 
             _constraints = []
-            for c in problem.constraints:
+            for c in problem_provider.problem.constraints:
                 if not isinstance(c, opti.NChooseK):
                     _constraints.append(c)
             _problem = opti.Problem(
-                inputs=problem.inputs, outputs=problem.outputs, constraints=_constraints
+                inputs=problem_provider.problem.inputs,
+                outputs=problem_provider.problem.outputs,
+                constraints=_constraints,
             )
 
     # determine number of experiments
@@ -129,11 +136,11 @@ def find_local_max_ipopt(
         x0 = sampling(_problem).sample(n_experiments)
 
     # get objective function
-    objective = get_objective(problem, model_type, delta=delta)
+    objective = get_objective(problem_provider, model_type, delta=delta)
 
     # get jacobian
     J = JacobianForLogdet(
-        problem,
+        problem_provider.problem,
         model_formula,
         n_experiments,
         delta=delta,
@@ -141,15 +148,19 @@ def find_local_max_ipopt(
     )
 
     # write constraints as scipy constraints
-    constraints = constraints_as_scipy_constraints(problem, n_experiments, tol)
+    constraints = constraints_as_scipy_constraints(
+        problem_provider.problem, n_experiments, tol
+    )
 
     # find bounds imposing NChooseK constraints
-    bounds = nchoosek_constraints_as_bounds(problem, n_experiments)
+    bounds = nchoosek_constraints_as_bounds(problem_provider.problem, n_experiments)
 
     # fix experiments if any are given
     if fixed_experiments is not None:
         fixed_experiments = np.array(fixed_experiments)
-        check_fixed_experiments(problem, n_experiments, fixed_experiments)
+        check_fixed_experiments(
+            problem_provider.problem, n_experiments, fixed_experiments
+        )
         for i, val in enumerate(fixed_experiments.flatten()):
             bounds[i] = (val, val)
             x0[i] = val
@@ -174,7 +185,7 @@ def find_local_max_ipopt(
 
     A = pd.DataFrame(
         result["x"].reshape(n_experiments, D),
-        columns=problem.inputs.names,
+        columns=problem_provider.problem.inputs.names,
         index=[f"exp{i}" for i in range(n_experiments)],
     )
 
@@ -183,7 +194,7 @@ def find_local_max_ipopt(
         for key in ["fun", "message", "nfev", "nit", "njev", "status", "success"]:
             print(key + ":", result[key])
         X = model_formula.get_model_matrix(A).to_numpy()
-        d = metrics(X, problem, n_samples=1000)
+        d = metrics(X, problem_provider.problem, n_samples=1000)
         print("metrics:", d)
 
     return A
