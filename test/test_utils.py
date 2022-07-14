@@ -7,13 +7,13 @@ from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 from doe.utils import (
     ConstraintWrapper,
+    FormulaProvider,
+    ProblemProvider,
     a_optimality,
     check_nchoosek_constraints_as_bounds,
     constraints_as_scipy_constraints,
     d_optimality,
     g_efficiency,
-    ProblemProvider,
-    FormulaProvider,
     metrics,
     n_zero_eigvals,
     nchoosek_constraints_as_bounds,
