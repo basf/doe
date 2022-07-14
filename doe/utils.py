@@ -7,7 +7,7 @@ import numpy as np
 import opti
 import pandas as pd
 from formulaic import Formula
-from opti import Categorical, Continuous
+from opti import Categorical
 from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 
