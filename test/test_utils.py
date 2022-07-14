@@ -30,7 +30,7 @@ def get_formula_from_string_recursion_limit():
     for i in range(350):
         model += f"x{i} + "
     model = model[:-3]
-    model = formula_provider.get_formula_from_string(model)
+    model = formula_provider.get_formula_from_string(model_type=model)
 
     terms = [f"x{i}" for i in range(350)]
     terms.append("1")
@@ -104,7 +104,7 @@ def test_get_formula_from_string():
 
     # get formula without model: valid input
     model = "x1 + x2 + x3"
-    model = formula_provider.get_formula_from_string(model)
+    model = formula_provider.get_formula_from_string(model_type=model)
     assert str(model) == "1 + x1 + x2 + x3"
 
     # get formula without model: invalid input
@@ -116,7 +116,7 @@ def test_get_formula_from_string():
     for i in range(350):
         model += f"x{i} + "
     model = model[:-3]
-    model = formula_provider.get_formula_from_string(model)
+    model = formula_provider.get_formula_from_string(model_type=model)
 
     terms = [f"x{i}" for i in range(350)]
     terms.append("1")
