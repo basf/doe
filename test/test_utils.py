@@ -206,11 +206,11 @@ def test_n_zero_eigvals_constrained():
         outputs=[opti.Continuous("y")],
         constraints=[opti.LinearEquality(["x1", "x2", "x3"], rhs=1)],
     )
-
-    assert n_zero_eigvals(prob, "linear") == 1
-    assert n_zero_eigvals(prob, "linear-and-quadratic") == 1
-    assert n_zero_eigvals(prob, "linear-and-interactions") == 3
-    assert n_zero_eigvals(prob, "fully-quadratic") == 6
+    problem_provider = ProblemProvider(problem=prob)
+    assert n_zero_eigvals(problem_provider, "linear") == 1
+    assert n_zero_eigvals(problem_provider, "linear-and-quadratic") == 1
+    assert n_zero_eigvals(problem_provider, "linear-and-interactions") == 3
+    assert n_zero_eigvals(problem_provider, "fully-quadratic") == 6
 
     # TODO: NChooseK?
 
