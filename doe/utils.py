@@ -40,8 +40,6 @@ class ProblemProvider:
         else:
             new_constraints = []
         for input in self._problem.inputs:
-            if isinstance(input, Continuous):
-                new_inputs.append(input)
             if isinstance(input, Categorical):
                 cat_names = [
                     col.replace("§", "____")
@@ -51,6 +49,8 @@ class ProblemProvider:
                     new_inputs.append(opti.Continuous(name, [0, 1]))
                     self._cat_list.append(name)
                 new_constraints.append(opti.LinearEquality(names=cat_names, rhs=1))
+            else:
+                new_inputs.append(input)
         problem = opti.Problem(
             inputs=new_inputs,
             outputs=self._problem.outputs,
@@ -61,11 +61,6 @@ class ProblemProvider:
     @property
     def problem(self) -> opti.Problem:
         return self._problem
-
-    @problem.setter
-    def problem(self, problem: opti.Problem) -> None:
-        self._cat_list = []
-        self._problem = problem
 
     @property
     def original_problem(self) -> opti.Problem:
