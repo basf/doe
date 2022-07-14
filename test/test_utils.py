@@ -12,23 +12,24 @@ from doe.utils import (
     constraints_as_scipy_constraints,
     d_optimality,
     g_efficiency,
-    get_formula_from_string,
+    FormulaProvider,
     metrics,
     n_zero_eigvals,
     nchoosek_constraints_as_bounds,
 )
 
 
-def test_get_formula_from_string_recursion_limit():
+def get_formula_from_string_recursion_limit():
     # save recursion limit
     recursion_limit = sys.getrecursionlimit()
 
+    formula_provider = FormulaProvider()
     # get formula for very large model
     model = ""
     for i in range(350):
         model += f"x{i} + "
     model = model[:-3]
-    model = get_formula_from_string(model)
+    model = formula_provider.get_formula_from_string(model)
 
     terms = [f"x{i}" for i in range(350)]
     terms.append("1")
@@ -45,16 +46,18 @@ def test_get_formula_from_string():
         inputs=[opti.Continuous(f"x{i}", [0, 1]) for i in range(3)],
         outputs=[opti.Continuous("y")],
     )
-
+    formula_provider = FormulaProvider()
     # linear model
     terms = ["1", "x0", "x1", "x2"]
-    model_formula = get_formula_from_string(problem=problem, model_type="linear")
+    model_formula = formula_provider.get_formula_from_string(
+        problem=problem, model_type="linear"
+    )
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
 
     # linear and interaction
     terms = ["1", "x0", "x1", "x2", "x0:x1", "x0:x2", "x1:x2"]
-    model_formula = get_formula_from_string(
+    model_formula = formula_provider.get_formula_from_string(
         problem=problem, model_type="linear-and-interactions"
     )
     assert all(term in terms for term in model_formula.terms)
@@ -62,7 +65,7 @@ def test_get_formula_from_string():
 
     # linear and quadratic
     terms = ["1", "x0", "x1", "x2", "x0**2", "x1**2", "x2**2"]
-    model_formula = get_formula_from_string(
+    model_formula = formula_provider.get_formula_from_string(
         problem=problem, model_type="linear-and-quadratic"
     )
     assert all(term in terms for term in model_formula.terms)
@@ -81,7 +84,7 @@ def test_get_formula_from_string():
         "x1**2",
         "x2**2",
     ]
-    model_formula = get_formula_from_string(
+    model_formula = formula_provider.get_formula_from_string(
         problem=problem, model_type="fully-quadratic"
     )
     assert all(term in terms for term in model_formula.terms)
@@ -90,7 +93,7 @@ def test_get_formula_from_string():
     # custom model
     terms_lhs = ["y"]
     terms_rhs = ["1", "x0", "x0**2", "x0:x1"]
-    model_formula = get_formula_from_string(
+    model_formula = formula_provider.get_formula_from_string(
         problem=problem, model_type="y ~ 1 + x0 + x0:x1 + {x0**2}", rhs_only=False
     )
     assert all(term in terms_lhs for term in model_formula.terms.lhs)
@@ -100,19 +103,19 @@ def test_get_formula_from_string():
 
     # get formula without model: valid input
     model = "x1 + x2 + x3"
-    model = get_formula_from_string(model)
+    model = formula_provider.get_formula_from_string(model)
     assert str(model) == "1 + x1 + x2 + x3"
 
     # get formula without model: invalid input
     with pytest.raises(AssertionError):
-        model = get_formula_from_string("linear")
+        model = formula_provider.get_formula_from_string("linear")
 
     # get formula for very large model
     model = ""
     for i in range(350):
         model += f"x{i} + "
     model = model[:-3]
-    model = get_formula_from_string(model)
+    model = formula_provider.get_formula_from_string(model)
 
     terms = [f"x{i}" for i in range(350)]
     terms.append("1")
@@ -164,20 +167,25 @@ def test_number_of_model_terms():
         outputs=[opti.Continuous("y")],
     )
 
-    formula = get_formula_from_string(problem=problem, model_type="linear")
+    formula_provider = FormulaProvider()
+    formula = formula_provider.get_formula_from_string(
+        problem=problem, model_type="linear"
+    )
     assert len(formula.terms) == 6
 
-    formula = get_formula_from_string(
+    formula = formula_provider.get_formula_from_string(
         problem=problem, model_type="linear-and-quadratic"
     )
     assert len(formula.terms) == 11
 
-    formula = get_formula_from_string(
+    formula = formula_provider.get_formula_from_string(
         problem=problem, model_type="linear-and-interactions"
     )
     assert len(formula.terms) == 16
 
-    formula = get_formula_from_string(problem=problem, model_type="fully-quadratic")
+    formula = formula_provider.get_formula_from_string(
+        problem=problem, model_type="fully-quadratic"
+    )
     assert len(formula.terms) == 21
 
     # 3 continuous & 2 discrete inputs
@@ -192,20 +200,24 @@ def test_number_of_model_terms():
         outputs=[opti.Continuous("y")],
     )
 
-    formula = get_formula_from_string(problem=problem, model_type="linear")
+    formula = formula_provider.get_formula_from_string(
+        problem=problem, model_type="linear"
+    )
     assert len(formula.terms) == 6
 
-    formula = get_formula_from_string(
+    formula = formula_provider.get_formula_from_string(
         problem=problem, model_type="linear-and-quadratic"
     )
     assert len(formula.terms) == 11
 
-    formula = get_formula_from_string(
+    formula = formula_provider.get_formula_from_string(
         problem=problem, model_type="linear-and-interactions"
     )
     assert len(formula.terms) == 16
 
-    formula = get_formula_from_string(problem=problem, model_type="fully-quadratic")
+    formula = formula_provider.get_formula_from_string(
+        problem=problem, model_type="fully-quadratic"
+    )
     assert len(formula.terms) == 21
 
 
