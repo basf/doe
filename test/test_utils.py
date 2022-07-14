@@ -173,11 +173,24 @@ def test_n_zero_eigvals_unconstrained():
         inputs=[opti.Continuous(f"x{i}", [0, 100]) for i in range(5)],
         outputs=[opti.Continuous("y")],
     )
-
-    assert n_zero_eigvals(problem, "linear") == 0
-    assert n_zero_eigvals(problem, "linear-and-quadratic") == 0
-    assert n_zero_eigvals(problem, "linear-and-interactions") == 0
-    assert n_zero_eigvals(problem, "fully-quadratic") == 0
+    problem_provider = ProblemProvider(problem)
+    assert n_zero_eigvals(problem_provider=problem_provider, model_type="linear") == 0
+    assert (
+        n_zero_eigvals(
+            problem_provider=problem_provider, model_type="linear-and-quadratic"
+        )
+        == 0
+    )
+    assert (
+        n_zero_eigvals(
+            problem_provider=problem_provider, model_type="linear-and-interactions"
+        )
+        == 0
+    )
+    assert (
+        n_zero_eigvals(problem_provider=problem_provider, model_type="fully-quadratic")
+        == 0
+    )
 
 
 def test_n_zero_eigvals_constrained():

@@ -47,7 +47,7 @@ def test_find_local_max_ipopt_nchoosek():
                 problem=problem, model_type="linear"
             ).terms
         )
-        - n_zero_eigvals(problem=problem, model_type="linear")
+        - n_zero_eigvals(problem_provider=problem_provider, model_type="linear")
         + 3
     )
 
