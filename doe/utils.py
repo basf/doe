@@ -142,7 +142,7 @@ class FormulaProvider:
                 )
 
             else:
-                formula = self.model_type + "   "
+                formula = model_type + "   "
 
         formula = Formula(formula[:-3])
 
