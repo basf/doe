@@ -1,5 +1,6 @@
 import sys
 import warnings
+from copy import deepcopy
 from itertools import combinations
 from typing import List, Optional, Union
 
@@ -18,8 +19,9 @@ class ProblemProvider:
             problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
             relax_problem (bool): Flag if problem needs to be relaxed
         """
+        self._cat_dict = {}
         self._cat_list = []
-        self._problem = problem
+        self._problem = deepcopy(problem)
         if relax_problem:
             self._problem = self.relaxed_problem()
         self._original_problem = problem
@@ -48,6 +50,7 @@ class ProblemProvider:
                 for name in cat_names:
                     new_inputs.append(opti.Continuous(name, [0, 1]))
                     self._cat_list.append(name)
+                self._cat_dict[input.name] = cat_names
                 new_constraints.append(opti.LinearEquality(names=cat_names, rhs=1))
             else:
                 new_inputs.append(input)
