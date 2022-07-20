@@ -206,7 +206,7 @@ def find_local_max_ipopt(
         d = metrics(X, problem_provider.problem, n_samples=1000)
         print("metrics:", d)
 
-    return A, B
+    return A
 
 
 def check_fixed_experiments(
