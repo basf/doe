@@ -344,12 +344,13 @@ def check_nchoosek_constraints_as_bounds(problem: opti.Problem) -> None:
         return
 
     # check if the domains of all NCHooseK constraints are compatible to linearization
-    parameter_names = np.unique(np.concatenate([c.names for c in nchoosek_constraints]))
-    for name in parameter_names:
-        if problem.inputs[name].domain[0] > 0 or problem.inputs[name].domain[1] < 0:
-            raise ValueError(
-                f"Constraint {c} cannot be formulated as bounds. 0 must be inside the domain of the affected decision variables."
-            )
+    for c in nchoosek_constraints:
+        for name in np.unique(c.names):
+            if problem.inputs[name].domain[0] > 0 or problem.inputs[name].domain[1] < 0:
+                raise ValueError(
+                    f"Constraint {c} cannot be formulated as bounds. 0 must be inside the domain of the affected decision variables."
+                )
+
 
     # check if the parameter names of two nchoose overlap
     for c in nchoosek_constraints:
