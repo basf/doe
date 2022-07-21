@@ -275,7 +275,9 @@ def test_number_of_model_terms():
 
     problem_wrapper = ProblemWrapper(problem)
 
-    formula = get_formula_from_string(problem_wrapper, model_type="linear")
+    formula = get_formula_from_string(
+        problem_wrapper=problem_wrapper, model_type="linear"
+    )
     assert len(formula.terms) == 6
 
     formula = get_formula_from_string(
