@@ -348,7 +348,8 @@ def check_nchoosek_constraints_as_bounds(problem: opti.Problem) -> None:
         for name in np.unique(c.names):
             if problem.inputs[name].domain[0] > 0 or problem.inputs[name].domain[1] < 0:
                 raise ValueError(
-                    f"Constraint {c} cannot be formulated as bounds. 0 must be inside the domain of the affected decision variables."
+                    f"Constraint {c} cannot be formulated as bounds. 0 must be inside the \
+                    domain of the affected decision variables."
                 )
 
 
