@@ -352,7 +352,6 @@ def check_nchoosek_constraints_as_bounds(problem: opti.Problem) -> None:
                     domain of the affected decision variables."
                 )
 
-
     # check if the parameter names of two nchoose overlap
     for c in nchoosek_constraints:
         for _c in nchoosek_constraints:
