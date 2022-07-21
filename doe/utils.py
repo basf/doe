@@ -288,17 +288,17 @@ def fully_quadratic_formula(
 
 
 def n_zero_eigvals(
-    problem_provider: ProblemWrapper, model_type: Union[str, Formula], epsilon=1e-7
+    problem_wrapper: ProblemWrapper, model_type: Union[str, Formula], epsilon=1e-7
 ) -> int:
     """Determine the number of eigenvalues of the information matrix that are necessarily zero because of
     equality constraints."""
 
     # sample points (fulfilling the constraints)
-    model_formula = problem_provider.get_formula_from_string(
+    model_formula = problem_wrapper.get_formula_from_string(
         model_type=model_type, rhs_only=True
     )
     N = len(model_formula.terms) + 3
-    X = problem_provider.problem.sample_inputs(N)
+    X = problem_wrapper.problem.sample_inputs(N)
 
     # compute eigenvalues of information matrix
     A = model_formula.get_model_matrix(X)
