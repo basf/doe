@@ -52,7 +52,7 @@ class ProblemProvider:
                     self._cat_list.append(name)
                 self._cat_dict[input.name] = cat_names
                 new_constraints.append(opti.LinearEquality(names=cat_names, rhs=1))
-            if isinstance(input, Discrete) and not isinstance(input, Categorical):
+            elif isinstance(input, Discrete):
                 new_inputs.append(
                     opti.Continuous(
                         name=input.name, domain=[input.bounds[0], input.bounds[1]]
@@ -60,7 +60,6 @@ class ProblemProvider:
                 )
             else:
                 new_inputs.append(input)
-        print(new_inputs)
         problem = opti.Problem(
             inputs=new_inputs,
             outputs=self._problem.outputs,
