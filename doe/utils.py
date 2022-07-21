@@ -86,11 +86,8 @@ class ProblemProvider:
                     self._cat_dict[input.name], axis=1
                 )
             if isinstance(input, opti.Discrete):
-                discrete_col = [
-                    input.round(x) for _, x in feasible_points[input.name].iterrows()
-                ]
+                discrete_col = [input.round(x) for x in feasible_points[input.name]]
                 feasible_points[input.name] = discrete_col
-                feasible_points = feasible_points.drop(input.name, axis=1)
         return feasible_points
 
     @property
