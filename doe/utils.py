@@ -12,7 +12,7 @@ from opti import Categorical, Discrete
 from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 
-class ProblemProvider:
+class ProblemWrapper:
     def __init__(self, problem: opti.Problem, relax_problem: bool = True) -> None:
         """Provider of Problems
         Args:
@@ -95,6 +95,10 @@ class ProblemProvider:
         return self._problem
 
     @property
+    def list_of_categorical_values(self) -> List[str]:
+        return self._cat_list
+
+    @property
     def original_problem(self) -> opti.Problem:
         return self._original_problem
 
@@ -103,202 +107,190 @@ class ProblemProvider:
         model_type: Union[str, Formula] = "linear",
         rhs_only: bool = True,
     ) -> Formula:
-        return self._formula_provider.get_formula_from_string(
+        return get_formula_from_string(
             model_type=model_type,
-            problem=self._problem,
+            problem_wrapper=self,
             rhs_only=rhs_only,
             exclude_polynomial=self._cat_list,
         )
 
 
-class FormulaProvider:
-    def __init__(
-        self,
-    ) -> None:
-        """Provider of formulas
-        Args:
-            model_type (str or Formula): A formula containing all model terms.
-            problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
-            Only needed if the model is defined by a keyword
-            rhs_only (bool): The function returns only the right hand side of the formula if set to True.
+def get_formula_from_string(
+    model_type: Union[str, Formula] = "linear",
+    problem_wrapper: ProblemWrapper = None,
+    rhs_only: bool = True,
+) -> Formula:
+    """Reformulates a string describing a model or certain keywords as Formula objects.
 
-        """
+    Args:
+        model_type (str or Formula): A formula containing all model terms.
+        rhs_only (bool): The function returns only the right hand side of the formula if set to True.
+        Returns:
+        exclude_polynomical (List[str]): List of varriables that should only included in first order.
+    A Formula object describing the model that was given as string or keyword.
+    """
+    # set maximum recursion depth to higher value
+    recursion_limit = sys.getrecursionlimit()
+    sys.setrecursionlimit(2000)
 
-    def get_formula_from_string(
-        self,
-        model_type: Union[str, Formula] = "linear",
-        problem: Optional[opti.Problem] = None,
-        rhs_only: bool = True,
-        exclude_polynomial: List[str] = [],
-    ) -> Formula:
-        """Reformulates a string describing a model or certain keywords as Formula objects.
+    if isinstance(model_type, Formula):
+        return model_type
+        # build model if a keyword and a problem are given.
+    else:
+        # linear model
+        if model_type == "linear":
+            formula = linear_formula(problem_wrapper=problem_wrapper)
 
-        Args:
-            model_type (str or Formula): A formula containing all model terms.
-            problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
-                Only needed if the model is defined by a keyword
-            rhs_only (bool): The function returns only the right hand side of the formula if set to True.
-            Returns:
-            exclude_polynomical (List[str]): List of varriables that should only included in first order.
-        A Formula object describing the model that was given as string or keyword.
-        """
-        # set maximum recursion depth to higher value
-        recursion_limit = sys.getrecursionlimit()
-        sys.setrecursionlimit(2000)
+        # linear and interactions model
+        elif model_type == "linear-and-quadratic":
+            formula = linear_and_quadratic_formula(problem_wrapper=problem_wrapper)
 
-        if isinstance(model_type, Formula):
-            return model_type
-            # build model if a keyword and a problem are given.
+        # linear and quadratic model
+        elif model_type == "linear-and-interactions":
+            formula = linear_and_interactions_formula(problem_wrapper=problem_wrapper)
+
+        # fully quadratic model
+        elif model_type == "fully-quadratic":
+            formula = fully_quadratic_formula(problem_wrapper=problem_wrapper)
+
         else:
-            # linear model
-            if model_type == "linear":
-                formula = self._linear_formula(problem=problem)
-
-            # linear and interactions model
-            elif model_type == "linear-and-quadratic":
-                formula = self._linear_and_quadratic_formula(
-                    problem=problem, exclude_polynomial=exclude_polynomial
-                )
-
-            # linear and quadratic model
-            elif model_type == "linear-and-interactions":
-                formula = self._linear_and_interactions_formula(
-                    problem=problem, exclude_polynomial=exclude_polynomial
-                )
-
-            # fully quadratic model
-            elif model_type == "fully-quadratic":
-                formula = self._fully_quadratic_formula(
-                    problem=problem, exclude_polynomial=exclude_polynomial
-                )
-
-            else:
-                formula = model_type + "   "
-
-        formula = Formula(formula[:-3])
-
-        if rhs_only:
-            if hasattr(formula, "rhs"):
-                formula = formula.rhs
-
-        # set recursion limit to old value
-        sys.setrecursionlimit(recursion_limit)
-
-        return formula
-
-    def _linear_formula(
-        self,
-        problem: Optional[opti.Problem],
-    ) -> str:
-        """Reformulates a string describing a linear-model or certain keywords as Formula objects.
             formula = model_type + "   "
 
-        Args:
-            None
+    formula = Formula(formula[:-3])
 
-        Returns:
-            A string describing the model that was given as string or keyword.
-        """
-        assert (
-            problem is not None
-        ), "If the model is described by a keyword a problem must be provided"
-        formula = "".join([input.name + " + " for input in problem.inputs])
-        return formula
+    if rhs_only:
+        if hasattr(formula, "rhs"):
+            formula = formula.rhs
 
-    def _linear_and_quadratic_formula(
-        self,
-        problem: Optional[opti.Problem],
-        exclude_polynomial: List[str] = [],
-    ) -> str:
-        """Reformulates a string describing a linear-and-quadratic model or certain keywords as Formula objects.
+    # set recursion limit to old value
+    sys.setrecursionlimit(recursion_limit)
 
-        Args:
-            None
+    return formula
 
-        Returns:
-            A string describing the model that was given as string or keyword.
-        """
-        assert (
-            problem is not None
-        ), "If the model is described by a keyword a problem must be provided."
-        formula = "".join([input.name + " + " for input in problem.inputs])
-        formula += "".join(
-            [
-                "" if input.name in exclude_polynomial else "{" + input.name + "**2} + "
-                for input in problem.inputs
-            ]
-        )
-        return formula
 
-    def _linear_and_interactions_formula(
-        self,
-        problem: Optional[opti.Problem],
-        exclude_polynomial: List[str] = [],
-    ) -> str:
-        """Reformulates a string describing a linear-and-interactions model or certain keywords as Formula objects.
+def linear_formula(
+    problem_wrapper: Optional[ProblemWrapper],
+) -> str:
+    """Reformulates a string describing a linear-model or certain keywords as Formula objects.
+        formula = model_type + "   "
 
-        Args:
-            None
+    Args:
+        None
 
-        Returns:
-            A string describing the model that was given as string or keyword.
-        """
-        assert (
-            problem is not None
-        ), "If the model is described by a keyword a problem must be provided."
-        formula = "".join([input.name + " + " for input in problem.inputs])
-        for i in range(problem.n_inputs):
-            for j in range(i):
-                if (
-                    problem.inputs.names[i] in exclude_polynomial
-                    and problem.inputs.names[j] in exclude_polynomial
-                ):
-                    """"""
-                else:
-                    formula += (
-                        problem.inputs.names[j] + ":" + problem.inputs.names[i] + " + "
-                    )
-        return formula
+    Returns:
+        A string describing the model that was given as string or keyword.
+    """
+    assert (
+        problem_wrapper is not None
+    ), "If the model is described by a keyword a problem must be provided"
+    formula = "".join([input.name + " + " for input in problem_wrapper.problem.inputs])
+    return formula
 
-    def _fully_quadratic_formula(
-        self,
-        problem: Optional[opti.Problem],
-        exclude_polynomial: List[str] = [],
-    ) -> str:
-        """Reformulates a string describing a fully-quadratic model or certain keywords as Formula objects.
 
-        Args:
-            None
+def linear_and_quadratic_formula(
+    problem_wrapper: Optional[ProblemWrapper],
+) -> str:
+    """Reformulates a string describing a linear-and-quadratic model or certain keywords as Formula objects.
 
-        Returns:
-            A string describing the model that was given as string or keyword.
-        """
-        assert (
-            problem is not None
-        ), "If the model is described by a keyword a problem must be provided."
-        formula = "".join([input.name + " + " for input in problem.inputs])
-        for i in range(problem.n_inputs):
-            for j in range(i):
-                if (
-                    problem.inputs.names[i] in exclude_polynomial
-                    and problem.inputs.names[j] in exclude_polynomial
-                ):
-                    """"""
-                else:
-                    formula += (
-                        problem.inputs.names[j] + ":" + problem.inputs.names[i] + " + "
-                    )
-        formula += "".join(
-            [
-                "" if input.name in exclude_polynomial else "{" + input.name + "**2} + "
-                for input in problem.inputs
-            ]
-        )
-        return formula
+    Args:
+        None
+
+    Returns:
+        A string describing the model that was given as string or keyword.
+    """
+    assert (
+        problem_wrapper is not None
+    ), "If the model is described by a keyword a problem must be provided."
+    formula = "".join([input.name + " + " for input in problem_wrapper.problem.inputs])
+    formula += "".join(
+        [
+            ""
+            if input.name in problem_wrapper.list_of_categorical_values
+            else "{" + input.name + "**2} + "
+            for input in problem_wrapper.problem.inputs
+        ]
+    )
+    return formula
+
+
+def linear_and_interactions_formula(
+    problem_wrapper: Optional[ProblemWrapper],
+) -> str:
+    """Reformulates a string describing a linear-and-interactions model or certain keywords as Formula objects.
+
+    Args:
+        None
+
+    Returns:
+        A string describing the model that was given as string or keyword.
+    """
+    assert (
+        problem_wrapper is not None
+    ), "If the model is described by a keyword a problem must be provided."
+    formula = "".join([input.name + " + " for input in problem_wrapper.problem.inputs])
+    for i in range(problem_wrapper.problem.n_inputs):
+        for j in range(i):
+            if (
+                problem_wrapper.problem.inputs.names[i]
+                in problem_wrapper.list_of_categorical_values
+                and problem_wrapper.problem.inputs.names[j]
+                in problem_wrapper.list_of_categorical_values
+            ):
+                """"""
+            else:
+                formula += (
+                    problem_wrapper.problem.inputs.names[j]
+                    + ":"
+                    + problem_wrapper.problem.inputs.names[i]
+                    + " + "
+                )
+    return formula
+
+
+def fully_quadratic_formula(
+    problem_wrapper: Optional[ProblemWrapper],
+) -> str:
+    """Reformulates a string describing a fully-quadratic model or certain keywords as Formula objects.
+
+    Args:
+        None
+
+    Returns:
+        A string describing the model that was given as string or keyword.
+    """
+    assert (
+        problem_wrapper is not None
+    ), "If the model is described by a keyword a problem must be provided."
+    formula = "".join([input.name + " + " for input in problem_wrapper.problem.inputs])
+    for i in range(problem_wrapper.problem.n_inputs):
+        for j in range(i):
+            if (
+                problem_wrapper.problem.inputs.names[i]
+                in problem_wrapper.list_of_categorical_values
+                and problem_wrapper.problem.inputs.names[j]
+                in problem_wrapper.list_of_categorical_values
+            ):
+                """"""
+            else:
+                formula += (
+                    problem_wrapper.problem.inputs.names[j]
+                    + ":"
+                    + problem_wrapper.problem.inputs.names[i]
+                    + " + "
+                )
+    formula += "".join(
+        [
+            ""
+            if input.name in problem_wrapper.list_of_categorical_values
+            else "{" + input.name + "**2} + "
+            for input in problem_wrapper.problem.inputs
+        ]
+    )
+    return formula
 
 
 def n_zero_eigvals(
-    problem_provider: ProblemProvider, model_type: Union[str, Formula], epsilon=1e-7
+    problem_provider: ProblemWrapper, model_type: Union[str, Formula], epsilon=1e-7
 ) -> int:
     """Determine the number of eigenvalues of the information matrix that are necessarily zero because of
     equality constraints."""

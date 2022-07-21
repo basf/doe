@@ -7,13 +7,13 @@ from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 from doe.utils import (
     ConstraintWrapper,
-    FormulaProvider,
-    ProblemProvider,
+    ProblemWrapper,
     a_optimality,
     check_nchoosek_constraints_as_bounds,
     constraints_as_scipy_constraints,
     d_optimality,
     g_efficiency,
+    get_formula_from_string,
     metrics,
     n_zero_eigvals,
     nchoosek_constraints_as_bounds,
@@ -24,13 +24,12 @@ def get_formula_from_string_recursion_limit():
     # save recursion limit
     recursion_limit = sys.getrecursionlimit()
 
-    formula_provider = FormulaProvider()
     # get formula for very large model
     model = ""
     for i in range(350):
         model += f"x{i} + "
     model = model[:-3]
-    model = formula_provider.get_formula_from_string(model_type=model)
+    model = get_formula_from_string(model_type=model)
 
     terms = [f"x{i}" for i in range(350)]
     terms.append("1")
@@ -47,27 +46,29 @@ def test_get_formula_from_string():
         inputs=[opti.Continuous(f"x{i}", [0, 1]) for i in range(3)],
         outputs=[opti.Continuous("y")],
     )
-    formula_provider = FormulaProvider()
+
+    problem_wrapper = ProblemWrapper(problem)
+
     # linear model
     terms = ["1", "x0", "x1", "x2"]
-    model_formula = formula_provider.get_formula_from_string(
-        problem=problem, model_type="linear"
+    model_formula = get_formula_from_string(
+        problem_wrapper=problem_wrapper, model_type="linear"
     )
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
 
     # linear and interaction
     terms = ["1", "x0", "x1", "x2", "x0:x1", "x0:x2", "x1:x2"]
-    model_formula = formula_provider.get_formula_from_string(
-        problem=problem, model_type="linear-and-interactions"
+    model_formula = get_formula_from_string(
+        problem_wrapper=problem_wrapper, model_type="linear-and-interactions"
     )
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
 
     # linear and quadratic
     terms = ["1", "x0", "x1", "x2", "x0**2", "x1**2", "x2**2"]
-    model_formula = formula_provider.get_formula_from_string(
-        problem=problem, model_type="linear-and-quadratic"
+    model_formula = get_formula_from_string(
+        problem_wrapper=problem_wrapper, model_type="linear-and-quadratic"
     )
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
@@ -85,8 +86,8 @@ def test_get_formula_from_string():
         "x1**2",
         "x2**2",
     ]
-    model_formula = formula_provider.get_formula_from_string(
-        problem=problem, model_type="fully-quadratic"
+    model_formula = get_formula_from_string(
+        problem_wrapper=problem_wrapper, model_type="fully-quadratic"
     )
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
@@ -94,8 +95,10 @@ def test_get_formula_from_string():
     # custom model
     terms_lhs = ["y"]
     terms_rhs = ["1", "x0", "x0**2", "x0:x1"]
-    model_formula = formula_provider.get_formula_from_string(
-        problem=problem, model_type="y ~ 1 + x0 + x0:x1 + {x0**2}", rhs_only=False
+    model_formula = get_formula_from_string(
+        problem_wrapper=problem_wrapper,
+        model_type="y ~ 1 + x0 + x0:x1 + {x0**2}",
+        rhs_only=False,
     )
     assert all(term in terms_lhs for term in model_formula.terms.lhs)
     assert all(term in model_formula.terms.lhs for term in terms_lhs)
@@ -104,19 +107,19 @@ def test_get_formula_from_string():
 
     # get formula without model: valid input
     model = "x1 + x2 + x3"
-    model = formula_provider.get_formula_from_string(model_type=model)
+    model = get_formula_from_string(model_type=model)
     assert str(model) == "1 + x1 + x2 + x3"
 
     # get formula without model: invalid input
     with pytest.raises(AssertionError):
-        model = formula_provider.get_formula_from_string("linear")
+        model = get_formula_from_string("linear")
 
     # get formula for very large model
     model = ""
     for i in range(350):
         model += f"x{i} + "
     model = model[:-3]
-    model = formula_provider.get_formula_from_string(model_type=model)
+    model = get_formula_from_string(model_type=model)
 
     terms = [f"x{i}" for i in range(350)]
     terms.append("1")
@@ -134,9 +137,9 @@ def test_formula_from_string_with_categoricals():
         inputs=inputs,
         outputs=[opti.Continuous("y")],
     )
-    problem_provider = ProblemProvider(problem)
+    problem_wrapper = ProblemWrapper(problem)
 
-    model_formula = problem_provider.get_formula_from_string(model_type="linear")
+    model_formula = problem_wrapper.get_formula_from_string(model_type="linear")
     # linear and interaction
     terms = [
         "1",
@@ -148,7 +151,7 @@ def test_formula_from_string_with_categoricals():
         "x2____c",
         "x4",
     ]
-    model_formula = problem_provider.get_formula_from_string(model_type="linear")
+    model_formula = problem_wrapper.get_formula_from_string(model_type="linear")
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
 
@@ -163,7 +166,7 @@ def test_formula_from_string_with_categoricals():
         "x4",
         "x4**2",
     ]
-    model_formula = problem_provider.get_formula_from_string(
+    model_formula = problem_wrapper.get_formula_from_string(
         model_type="linear-and-quadratic"
     )
     assert all(term in terms for term in model_formula.terms)
@@ -185,7 +188,7 @@ def test_formula_from_string_with_categoricals():
         "x2____b:x4",
         "x2____c:x4",
     ]
-    model_formula = problem_provider.get_formula_from_string(
+    model_formula = problem_wrapper.get_formula_from_string(
         model_type="linear-and-interactions"
     )
     assert all(term in terms for term in model_formula.terms)
@@ -208,7 +211,7 @@ def test_formula_from_string_with_categoricals():
         "x2____c:x4",
         "x4**2",
     ]
-    model_formula = problem_provider.get_formula_from_string(
+    model_formula = problem_wrapper.get_formula_from_string(
         model_type="fully-quadratic"
     )
     assert all(term in terms for term in model_formula.terms)
@@ -221,22 +224,22 @@ def test_n_zero_eigvals_unconstrained():
         inputs=[opti.Continuous(f"x{i}", [0, 100]) for i in range(5)],
         outputs=[opti.Continuous("y")],
     )
-    problem_provider = ProblemProvider(problem)
-    assert n_zero_eigvals(problem_provider=problem_provider, model_type="linear") == 0
+    problem_wrapper = ProblemWrapper(problem)
+    assert n_zero_eigvals(problem_wrapper=problem_wrapper, model_type="linear") == 0
     assert (
         n_zero_eigvals(
-            problem_provider=problem_provider, model_type="linear-and-quadratic"
+            problem_wrapper=problem_wrapper, model_type="linear-and-quadratic"
         )
         == 0
     )
     assert (
         n_zero_eigvals(
-            problem_provider=problem_provider, model_type="linear-and-interactions"
+            problem_wrapper=problem_wrapper, model_type="linear-and-interactions"
         )
         == 0
     )
     assert (
-        n_zero_eigvals(problem_provider=problem_provider, model_type="fully-quadratic")
+        n_zero_eigvals(problem_wrapper=problem_wrapper, model_type="fully-quadratic")
         == 0
     )
 
@@ -254,11 +257,11 @@ def test_n_zero_eigvals_constrained():
         outputs=[opti.Continuous("y")],
         constraints=[opti.LinearEquality(["x1", "x2", "x3"], rhs=1)],
     )
-    problem_provider = ProblemProvider(problem=prob)
-    assert n_zero_eigvals(problem_provider, "linear") == 1
-    assert n_zero_eigvals(problem_provider, "linear-and-quadratic") == 1
-    assert n_zero_eigvals(problem_provider, "linear-and-interactions") == 3
-    assert n_zero_eigvals(problem_provider, "fully-quadratic") == 6
+    problem_wrapper = ProblemWrapper(problem=prob)
+    assert n_zero_eigvals(problem_wrapper, "linear") == 1
+    assert n_zero_eigvals(problem_wrapper, "linear-and-quadratic") == 1
+    assert n_zero_eigvals(problem_wrapper, "linear-and-interactions") == 3
+    assert n_zero_eigvals(problem_wrapper, "fully-quadratic") == 6
 
     # TODO: NChooseK?
 
@@ -270,24 +273,23 @@ def test_number_of_model_terms():
         outputs=[opti.Continuous("y")],
     )
 
-    formula_provider = FormulaProvider()
-    formula = formula_provider.get_formula_from_string(
-        problem=problem, model_type="linear"
-    )
+    problem_wrapper = ProblemWrapper(problem)
+
+    formula = get_formula_from_string(problem_wrapper, model_type="linear")
     assert len(formula.terms) == 6
 
-    formula = formula_provider.get_formula_from_string(
-        problem=problem, model_type="linear-and-quadratic"
+    formula = get_formula_from_string(
+        problem_wrapper=problem_wrapper, model_type="linear-and-quadratic"
     )
     assert len(formula.terms) == 11
 
-    formula = formula_provider.get_formula_from_string(
-        problem=problem, model_type="linear-and-interactions"
+    formula = get_formula_from_string(
+        problem_wrapper=problem_wrapper, model_type="linear-and-interactions"
     )
     assert len(formula.terms) == 16
 
-    formula = formula_provider.get_formula_from_string(
-        problem=problem, model_type="fully-quadratic"
+    formula = get_formula_from_string(
+        problem_wrapper=problem_wrapper, model_type="fully-quadratic"
     )
     assert len(formula.terms) == 21
 
@@ -303,23 +305,25 @@ def test_number_of_model_terms():
         outputs=[opti.Continuous("y")],
     )
 
-    formula = formula_provider.get_formula_from_string(
-        problem=problem, model_type="linear"
+    problem_wrapper = ProblemWrapper(problem)
+
+    formula = get_formula_from_string(
+        problem_wrapper=problem_wrapper, model_type="linear"
     )
     assert len(formula.terms) == 6
 
-    formula = formula_provider.get_formula_from_string(
-        problem=problem, model_type="linear-and-quadratic"
+    formula = get_formula_from_string(
+        problem_wrapper=problem_wrapper, model_type="linear-and-quadratic"
     )
     assert len(formula.terms) == 11
 
-    formula = formula_provider.get_formula_from_string(
-        problem=problem, model_type="linear-and-interactions"
+    formula = get_formula_from_string(
+        problem_wrapper=problem_wrapper, model_type="linear-and-interactions"
     )
     assert len(formula.terms) == 16
 
-    formula = formula_provider.get_formula_from_string(
-        problem=problem, model_type="fully-quadratic"
+    formula = get_formula_from_string(
+        problem_wrapper=problem_wrapper, model_type="fully-quadratic"
     )
     assert len(formula.terms) == 21
 

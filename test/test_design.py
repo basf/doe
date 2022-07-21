@@ -9,7 +9,7 @@ from doe.design import (
     logD,
 )
 from doe.sampling import CornerSampling, OptiSampling, ProbabilitySimplexSampling
-from doe.utils import FormulaProvider, ProblemProvider, n_zero_eigvals
+from doe.utils import ProblemWrapper, get_formula_from_string, n_zero_eigvals
 
 
 def test_logD():
@@ -24,8 +24,8 @@ def test_get_objective():
         inputs=[opti.Continuous(f"x{i}", [0, 1]) for i in range(3)],
         outputs=[opti.Continuous("y")],
     )
-    problem_provider = ProblemProvider(problem=problem)
-    objective = get_objective(problem_provider, "linear")
+    problem_wrapper = ProblemWrapper(problem=problem)
+    objective = get_objective(problem_wrapper, "linear")
 
     x = np.array([1, 0, 0, 0, 1, 0, 0, 0, 1])
     assert np.allclose(objective(x), -np.log(4) - np.log(1e-7))
@@ -39,20 +39,20 @@ def test_find_local_max_ipopt_nchoosek():
         outputs=[opti.Continuous("y")],
         constraints=[opti.NChooseK(inputs.names, max_active=3)],
     )
-    problem_provider = ProblemProvider(problem=problem)
+    problem_wrapper = ProblemWrapper(problem=problem)
     D = problem.n_inputs
-    formula_provider = FormulaProvider()
+
     N = (
         len(
-            formula_provider.get_formula_from_string(
-                problem=problem, model_type="linear"
+            get_formula_from_string(
+                problem_wrapper=problem_wrapper, model_type="linear"
             ).terms
         )
-        - n_zero_eigvals(problem_provider=problem_provider, model_type="linear")
+        - n_zero_eigvals(problem_wrapper=problem_wrapper, model_type="linear")
         + 3
     )
 
-    A = find_local_max_ipopt(problem_provider, "linear")
+    A = find_local_max_ipopt(problem, "linear")
     assert A.shape == (N, D)
 
 
@@ -64,18 +64,18 @@ def test_find_local_max_ipopt_mixture():
         outputs=[opti.Continuous("y")],
         constraints=[opti.LinearEquality(inputs.names, rhs=1)],
     )
-    problem_provider = ProblemProvider(problem=problem)
+    problem_wrapper = ProblemWrapper(problem=problem)
     D = problem.n_inputs
-    formula_provider = FormulaProvider()
+
     N = (
         len(
-            formula_provider.get_formula_from_string(
-                problem=problem, model_type="linear"
+            get_formula_from_string(
+                problem_wrapper=problem_wrapper, model_type="linear"
             ).terms
         )
         + 3
     )
-    A = find_local_max_ipopt(problem_provider, "linear")
+    A = find_local_max_ipopt(problem, "linear")
     assert A.shape == (N, D)
 
 
@@ -92,10 +92,9 @@ def test_find_local_max_ipopt_results():
             opti.LinearInequality(["x1", "x2"], lhs=[-20, 5], rhs=-3),
         ],
     )
-    problem_provider = ProblemProvider(problem=problem)
 
     np.random.seed(1)
-    A = find_local_max_ipopt(problem_provider, "linear", n_experiments=12)
+    A = find_local_max_ipopt(problem, "linear", n_experiments=12)
     opt = np.array([[0.2, 0.2, 0.6], [0.3, 0.6, 0.1], [0.7, 0.1, 0.2], [0.3, 0.1, 0.6]])
     for row in A.to_numpy():
         assert any([np.allclose(row, o, atol=1e-2) for o in opt])
@@ -111,10 +110,10 @@ def test_find_local_max_ipopt_results():
             opti.NChooseK(names=["x1", "x2", "x3"], max_active=1),
         ],
     )
-    problem_provider = ProblemProvider(problem=problem)
+
     with pytest.warns(UserWarning):
         A = find_local_max_ipopt(
-            problem_provider, "fully-quadratic", ipopt_options={"maxiter": 100}
+            problem, "fully-quadratic", ipopt_options={"maxiter": 100}
         )
     opt = np.eye(3)
     for row in A.to_numpy():
@@ -127,7 +126,7 @@ def test_find_local_max_ipopt_mixed_runs():
     # define problem: no NChooseK constraints
     inputs = [opti.Continuous(f"x{i+1}", [0, 1]) for i in range(3)]
     inputs.append(opti.Categorical(f"x{4}", ["a", "b"]))
-    inputs.append(opti.Categorical(f"x{5}", ["c", "d"]))
+    inputs.append(opti.Discrete(f"x{5}", [1, 2, 3]))
     problem = opti.Problem(
         inputs=opti.Parameters(inputs),
         outputs=[opti.Continuous("y")],
@@ -139,9 +138,8 @@ def test_find_local_max_ipopt_mixed_runs():
         ],
     )
 
-    problem_provider = ProblemProvider(problem=problem)
     np.random.seed(1)
-    find_local_max_ipopt(problem_provider, "linear", n_experiments=12)
+    find_local_max_ipopt(problem, "linear", n_experiments=12)
 
 
 def test_find_local_max_ipopt_sampling():
@@ -150,17 +148,13 @@ def test_find_local_max_ipopt_sampling():
         inputs=[opti.Continuous(f"x{i}", [0, 1]) for i in range(3)],
         outputs=[opti.Continuous("y")],
     )
-    problem_provider = ProblemProvider(problem=problem)
+
     # test sampling methods
-    find_local_max_ipopt(problem_provider, "linear", sampling=OptiSampling)
-    find_local_max_ipopt(problem_provider, "linear", sampling=CornerSampling)
-    find_local_max_ipopt(
-        problem_provider, "linear", sampling=ProbabilitySimplexSampling
-    )
+    find_local_max_ipopt(problem, "linear", sampling=OptiSampling)
+    find_local_max_ipopt(problem, "linear", sampling=CornerSampling)
+    find_local_max_ipopt(problem, "linear", sampling=ProbabilitySimplexSampling)
     sampling = np.zeros(shape=(10, 3)).flatten()
-    find_local_max_ipopt(
-        problem_provider, "linear", n_experiments=10, sampling=sampling
-    )
+    find_local_max_ipopt(problem, "linear", n_experiments=10, sampling=sampling)
 
 
 def test_find_local_max_ipopt_fixed_experiments():
@@ -176,10 +170,10 @@ def test_find_local_max_ipopt_fixed_experiments():
             opti.LinearInequality(["x1", "x2"], lhs=[-20, 5], rhs=-3),
         ],
     )
-    problem_provider = ProblemProvider(problem=problem)
+
     np.random.seed(1)
     A = find_local_max_ipopt(
-        problem_provider,
+        problem,
         "linear",
         n_experiments=12,
         fixed_experiments=[[0.3, 0.5, 0.2]],
@@ -202,7 +196,7 @@ def test_find_local_max_ipopt_fixed_experiments():
     # define problem: no NChooseK constraints, invalid proposal
     with pytest.raises(ValueError):
         find_local_max_ipopt(
-            problem_provider,
+            problem,
             "linear",
             n_experiments=12,
             fixed_experiments=np.ones(shape=(12, 3)),
@@ -217,10 +211,10 @@ def test_find_local_max_ipopt_fixed_experiments():
             opti.NChooseK(names=["x1", "x2", "x3"], max_active=1),
         ],
     )
-    problem_provider = ProblemProvider(problem=problem)
+
     with pytest.warns(UserWarning):
         A = find_local_max_ipopt(
-            problem_provider,
+            problem,
             "fully-quadratic",
             ipopt_options={"maxiter": 100},
             fixed_experiments=[[1, 0, 0], [0, 1, 0]],
