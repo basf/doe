@@ -45,7 +45,7 @@ def test_find_local_max_ipopt_nchoosek():
     N = (
         len(
             get_formula_from_string(
-                problem_wrapper=problem_wrapper, model_type="linear"
+                model_type="linear", problem_wrapper=problem_wrapper
             ).terms
         )
         - n_zero_eigvals(problem_wrapper=problem_wrapper, model_type="linear")
