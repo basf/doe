@@ -110,7 +110,6 @@ class ProblemWrapper:
             model_type=model_type,
             problem_wrapper=self,
             rhs_only=rhs_only,
-            exclude_polynomial=self._cat_list,
         )
 
 
