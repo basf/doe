@@ -25,7 +25,6 @@ class ProblemWrapper:
         if relax_problem:
             self._problem = self.relaxed_problem()
         self._original_problem = problem
-        self._formula_provider = FormulaProvider()
 
     def relaxed_problem(self) -> opti.Problem:
         """Transforms an opti.problem with Categorical variables into its relaxed version.
