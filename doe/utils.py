@@ -8,7 +8,7 @@ import numpy as np
 import opti
 import pandas as pd
 from formulaic import Formula
-from opti import Categorical
+from opti import Categorical, Discrete
 from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 
@@ -52,6 +52,12 @@ class ProblemProvider:
                     self._cat_list.append(name)
                 self._cat_dict[input.name] = cat_names
                 new_constraints.append(opti.LinearEquality(names=cat_names, rhs=1))
+            if isinstance(input, Discrete):
+                new_inputs.append(
+                    opti.Continuous(
+                        name=name, domain=[input.bounds[0], input.bounds[1]]
+                    )
+                )
             else:
                 new_inputs.append(input)
         problem = opti.Problem(
@@ -60,6 +66,32 @@ class ProblemProvider:
             constraints=new_constraints,
         )
         return problem
+
+    def transform_onto_original_problem(
+        self, feasible_points: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Transforms feasible points of a relaxed problem onto a feasible point
+        of the original problem.
+        Returns:
+            Feasible points of the original problem
+        """
+        for input in self.original_problem.inputs:
+            if isinstance(input, opti.Categorical):
+                cat_col = [
+                    input.domain[np.argmax(x.values)]
+                    for _, x in feasible_points[self._cat_dict[input.name]].iterrows()
+                ]
+                feasible_points[input.name] = cat_col
+                feasible_points = feasible_points.drop(
+                    self._cat_dict[input.name], axis=1
+                )
+            if isinstance(input, opti.Discrete):
+                discrete_col = [
+                    input.round(x) for _, x in feasible_points[input.name].iterrows()
+                ]
+                feasible_points[input.name] = discrete_col
+                feasible_points = feasible_points.drop(input.name, axis=1)
+        return feasible_points
 
     @property
     def problem(self) -> opti.Problem:

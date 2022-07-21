@@ -188,15 +188,7 @@ def find_local_max_ipopt(
         index=[f"exp{i}" for i in range(n_experiments)],
     )
 
-    # project categorical variables back to categorical values
-    for input in problem_provider.original_problem.inputs:
-        if isinstance(input, opti.Categorical):
-            cat_col = [
-                input.domain[np.argmax(x.values)]
-                for _, x in A[problem_provider._cat_dict[input.name]].iterrows()
-            ]
-            A[input.name] = cat_col
-            A = A.drop(problem_provider._cat_dict[input.name], axis=1)
+    A = problem_provider.transform_onto_original_problem(A)
 
     # exit message
     if _ipopt_options[b"print_level"] > 12:
