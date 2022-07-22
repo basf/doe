@@ -139,7 +139,7 @@ def test_find_local_max_ipopt_mixed_runs():
     )
 
     np.random.seed(1)
-    find_local_max_ipopt(problem, "linear", n_experiments=12)
+    find_local_max_ipopt(problem=problem, model_type="linear", n_experiments=12)
 
 
 def test_find_local_max_ipopt_sampling():
