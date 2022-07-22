@@ -193,7 +193,8 @@ def test_formula_from_string_with_categoricals():
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
 
-    problem_context = ProblemContext(problem).relax_problem()
+    problem_context = ProblemContext(problem)
+    problem_context.relax_problem()
 
     model_formula = problem_context.get_formula_from_string(model_type="linear")
     # linear and interaction
