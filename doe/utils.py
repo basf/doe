@@ -12,7 +12,7 @@ from opti import Categorical, Discrete
 from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 
-class ProblemWrapper:
+class ProblemContext:
     def __init__(self, problem: opti.Problem, relax_problem: bool = True) -> None:
         """Provider of Problems
         Args:
@@ -108,14 +108,14 @@ class ProblemWrapper:
     ) -> Formula:
         return get_formula_from_string(
             model_type=model_type,
-            problem_wrapper=self,
+            problem_context=self,
             rhs_only=rhs_only,
         )
 
 
 def get_formula_from_string(
     model_type: Union[str, Formula] = "linear",
-    problem_wrapper: ProblemWrapper = None,
+    problem_context: ProblemContext = None,
     rhs_only: bool = True,
 ) -> Formula:
     """Reformulates a string describing a model or certain keywords as Formula objects.
@@ -137,19 +137,19 @@ def get_formula_from_string(
     else:
         # linear model
         if model_type == "linear":
-            formula = linear_formula(problem_wrapper=problem_wrapper)
+            formula = linear_formula(problem_context=problem_context)
 
         # linear and interactions model
         elif model_type == "linear-and-quadratic":
-            formula = linear_and_quadratic_formula(problem_wrapper=problem_wrapper)
+            formula = linear_and_quadratic_formula(problem_context=problem_context)
 
         # linear and quadratic model
         elif model_type == "linear-and-interactions":
-            formula = linear_and_interactions_formula(problem_wrapper=problem_wrapper)
+            formula = linear_and_interactions_formula(problem_context=problem_context)
 
         # fully quadratic model
         elif model_type == "fully-quadratic":
-            formula = fully_quadratic_formula(problem_wrapper=problem_wrapper)
+            formula = fully_quadratic_formula(problem_context=problem_context)
 
         else:
             formula = model_type + "   "
@@ -167,7 +167,7 @@ def get_formula_from_string(
 
 
 def linear_formula(
-    problem_wrapper: Optional[ProblemWrapper],
+    problem_context: Optional[ProblemContext],
 ) -> str:
     """Reformulates a string describing a linear-model or certain keywords as Formula objects.
         formula = model_type + "   "
@@ -179,14 +179,14 @@ def linear_formula(
         A string describing the model that was given as string or keyword.
     """
     assert (
-        problem_wrapper is not None
+        problem_context is not None
     ), "If the model is described by a keyword a problem must be provided"
-    formula = "".join([input.name + " + " for input in problem_wrapper.problem.inputs])
+    formula = "".join([input.name + " + " for input in problem_context.problem.inputs])
     return formula
 
 
 def linear_and_quadratic_formula(
-    problem_wrapper: Optional[ProblemWrapper],
+    problem_context: Optional[ProblemContext],
 ) -> str:
     """Reformulates a string describing a linear-and-quadratic model or certain keywords as Formula objects.
 
@@ -197,22 +197,22 @@ def linear_and_quadratic_formula(
         A string describing the model that was given as string or keyword.
     """
     assert (
-        problem_wrapper is not None
+        problem_context is not None
     ), "If the model is described by a keyword a problem must be provided."
-    formula = "".join([input.name + " + " for input in problem_wrapper.problem.inputs])
+    formula = "".join([input.name + " + " for input in problem_context.problem.inputs])
     formula += "".join(
         [
             ""
-            if input.name in problem_wrapper.list_of_categorical_values
+            if input.name in problem_context.list_of_categorical_values
             else "{" + input.name + "**2} + "
-            for input in problem_wrapper.problem.inputs
+            for input in problem_context.problem.inputs
         ]
     )
     return formula
 
 
 def linear_and_interactions_formula(
-    problem_wrapper: Optional[ProblemWrapper],
+    problem_context: Optional[ProblemContext],
 ) -> str:
     """Reformulates a string describing a linear-and-interactions model or certain keywords as Formula objects.
 
@@ -223,30 +223,30 @@ def linear_and_interactions_formula(
         A string describing the model that was given as string or keyword.
     """
     assert (
-        problem_wrapper is not None
+        problem_context is not None
     ), "If the model is described by a keyword a problem must be provided."
-    formula = "".join([input.name + " + " for input in problem_wrapper.problem.inputs])
-    for i in range(problem_wrapper.problem.n_inputs):
+    formula = "".join([input.name + " + " for input in problem_context.problem.inputs])
+    for i in range(problem_context.problem.n_inputs):
         for j in range(i):
             if (
-                problem_wrapper.problem.inputs.names[i]
-                in problem_wrapper.list_of_categorical_values
-                and problem_wrapper.problem.inputs.names[j]
-                in problem_wrapper.list_of_categorical_values
+                problem_context.problem.inputs.names[i]
+                in problem_context.list_of_categorical_values
+                and problem_context.problem.inputs.names[j]
+                in problem_context.list_of_categorical_values
             ):
                 """"""
             else:
                 formula += (
-                    problem_wrapper.problem.inputs.names[j]
+                    problem_context.problem.inputs.names[j]
                     + ":"
-                    + problem_wrapper.problem.inputs.names[i]
+                    + problem_context.problem.inputs.names[i]
                     + " + "
                 )
     return formula
 
 
 def fully_quadratic_formula(
-    problem_wrapper: Optional[ProblemWrapper],
+    problem_context: Optional[ProblemContext],
 ) -> str:
     """Reformulates a string describing a fully-quadratic model or certain keywords as Formula objects.
 
@@ -257,48 +257,48 @@ def fully_quadratic_formula(
         A string describing the model that was given as string or keyword.
     """
     assert (
-        problem_wrapper is not None
+        problem_context is not None
     ), "If the model is described by a keyword a problem must be provided."
-    formula = "".join([input.name + " + " for input in problem_wrapper.problem.inputs])
-    for i in range(problem_wrapper.problem.n_inputs):
+    formula = "".join([input.name + " + " for input in problem_context.problem.inputs])
+    for i in range(problem_context.problem.n_inputs):
         for j in range(i):
             if (
-                problem_wrapper.problem.inputs.names[i]
-                in problem_wrapper.list_of_categorical_values
-                and problem_wrapper.problem.inputs.names[j]
-                in problem_wrapper.list_of_categorical_values
+                problem_context.problem.inputs.names[i]
+                in problem_context.list_of_categorical_values
+                and problem_context.problem.inputs.names[j]
+                in problem_context.list_of_categorical_values
             ):
                 """"""
             else:
                 formula += (
-                    problem_wrapper.problem.inputs.names[j]
+                    problem_context.problem.inputs.names[j]
                     + ":"
-                    + problem_wrapper.problem.inputs.names[i]
+                    + problem_context.problem.inputs.names[i]
                     + " + "
                 )
     formula += "".join(
         [
             ""
-            if input.name in problem_wrapper.list_of_categorical_values
+            if input.name in problem_context.list_of_categorical_values
             else "{" + input.name + "**2} + "
-            for input in problem_wrapper.problem.inputs
+            for input in problem_context.problem.inputs
         ]
     )
     return formula
 
 
 def n_zero_eigvals(
-    problem_wrapper: ProblemWrapper, model_type: Union[str, Formula], epsilon=1e-7
+    problem_context: ProblemContext, model_type: Union[str, Formula], epsilon=1e-7
 ) -> int:
     """Determine the number of eigenvalues of the information matrix that are necessarily zero because of
     equality constraints."""
 
     # sample points (fulfilling the constraints)
-    model_formula = problem_wrapper.get_formula_from_string(
+    model_formula = problem_context.get_formula_from_string(
         model_type=model_type, rhs_only=True
     )
     N = len(model_formula.terms) + 3
-    X = problem_wrapper.problem.sample_inputs(N)
+    X = problem_context.problem.sample_inputs(N)
 
     # compute eigenvalues of information matrix
     A = model_formula.get_model_matrix(X)

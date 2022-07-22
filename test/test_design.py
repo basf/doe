@@ -9,7 +9,7 @@ from doe.design import (
     logD,
 )
 from doe.sampling import CornerSampling, OptiSampling, ProbabilitySimplexSampling
-from doe.utils import ProblemWrapper, get_formula_from_string, n_zero_eigvals
+from doe.utils import ProblemContext, get_formula_from_string, n_zero_eigvals
 
 
 def test_logD():
@@ -24,8 +24,8 @@ def test_get_objective():
         inputs=[opti.Continuous(f"x{i}", [0, 1]) for i in range(3)],
         outputs=[opti.Continuous("y")],
     )
-    problem_wrapper = ProblemWrapper(problem=problem)
-    objective = get_objective(problem_wrapper, "linear")
+    problem_context = ProblemContext(problem=problem)
+    objective = get_objective(problem_context, "linear")
 
     x = np.array([1, 0, 0, 0, 1, 0, 0, 0, 1])
     assert np.allclose(objective(x), -np.log(4) - np.log(1e-7))
@@ -39,16 +39,16 @@ def test_find_local_max_ipopt_nchoosek():
         outputs=[opti.Continuous("y")],
         constraints=[opti.NChooseK(inputs.names, max_active=3)],
     )
-    problem_wrapper = ProblemWrapper(problem=problem)
+    problem_context = ProblemContext(problem=problem)
     D = problem.n_inputs
 
     N = (
         len(
             get_formula_from_string(
-                model_type="linear", problem_wrapper=problem_wrapper
+                model_type="linear", problem_context=problem_context
             ).terms
         )
-        - n_zero_eigvals(problem_wrapper=problem_wrapper, model_type="linear")
+        - n_zero_eigvals(problem_context=problem_context, model_type="linear")
         + 3
     )
 
@@ -64,13 +64,13 @@ def test_find_local_max_ipopt_mixture():
         outputs=[opti.Continuous("y")],
         constraints=[opti.LinearEquality(inputs.names, rhs=1)],
     )
-    problem_wrapper = ProblemWrapper(problem=problem)
+    problem_context = ProblemContext(problem=problem)
     D = problem.n_inputs
 
     N = (
         len(
             get_formula_from_string(
-                problem_wrapper=problem_wrapper, model_type="linear"
+                problem_context=problem_context, model_type="linear"
             ).terms
         )
         + 3
