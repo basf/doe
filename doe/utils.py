@@ -334,7 +334,7 @@ def n_zero_eigvals(
 
 
 def constraints_as_scipy_constraints(
-    problem: opti.problem,
+    problem: opti.Problem,
     n_experiments: int,
     tol: float = 1e-3,
 ) -> List:
