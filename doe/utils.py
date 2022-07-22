@@ -24,14 +24,14 @@ class ProblemContext:
         self._problem = deepcopy(problem)
         self._original_problem = problem
 
-    def relax_problem(self) -> opti.Problem:
-        """Transforms an opti.problem with Categorical variables into its relaxed version.
+    def relax_problem(self) -> None:
+        """Transforms the owned opti.problem with Categorical variables into its relaxed version.
         Categorical variables are transformed into their one-hot encoding taking values taking
         discrete values 0 or 1. Then, one-hot encoded variables are relaxed to take values
         between 0 and 1, while fulfilling the constraint, that they have to sum up to 1.
 
         Returns:
-            A string describing the model that was given as string or keyword.
+            None.
         """
         new_inputs = []
         if self._problem.constraints:
@@ -62,7 +62,8 @@ class ProblemContext:
             outputs=self._problem.outputs,
             constraints=new_constraints,
         )
-        return problem
+        self._problem = problem
+        return None
 
     def transform_onto_original_problem(
         self, feasible_points: pd.DataFrame
