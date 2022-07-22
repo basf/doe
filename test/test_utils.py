@@ -183,9 +183,9 @@ def test_formula_from_string_with_categoricals():
         "x1",
         "x2",
         "x4",
+        "x4**2",
         "x1:x4",
         "x2:x4",
-        "x4**2",
     ]
     model_formula = problem_context.get_formula_from_string(
         model_type="fully-quadratic"
