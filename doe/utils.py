@@ -21,6 +21,10 @@ class ProblemContext:
         """
         self._cat_dict = {}
         self._cat_list = []
+        self._exclude_list = []
+        for input in problem.inputs:
+            if isinstance(input, Categorical):
+                self._exclude_list.append(input.name)
         self._problem = deepcopy(problem)
         self._original_problem = problem
 
@@ -93,8 +97,12 @@ class ProblemContext:
         return self._problem
 
     @property
-    def list_of_categorical_values(self) -> List[str]:
+    def list_of_categorical_variables(self) -> List[str]:
         return self._cat_list
+
+    @property
+    def list_of_variables_without_higher_order_terms(self) -> List[str]:
+        return self._cat_list + self._exclude_list
 
     @property
     def original_problem(self) -> opti.Problem:
@@ -202,8 +210,8 @@ def linear_and_quadratic_formula(
     formula += "".join(
         [
             ""
-            if (input.name in problem_context.list_of_categorical_values)
-            or isinstance(input, Categorical)  # exclude h.o. terms for categoricals
+            if input.name
+            in problem_context.list_of_variables_without_higher_order_terms  # exclude h.o. terms for categoricals
             else "{" + input.name + "**2} + "
             for input in problem_context.problem.inputs
         ]
@@ -230,17 +238,10 @@ def linear_and_interactions_formula(
         for j in range(i):
             # exclude h.o. terms for categoricals
             exlude_flag = (
-                (
-                    problem_context.problem.inputs.names[i]
-                    in problem_context.list_of_categorical_values
-                )
-                or isinstance(input, Categorical)
-            ) and (
-                (
-                    problem_context.problem.inputs.names[j]
-                    in problem_context.list_of_categorical_values
-                )
-                or isinstance(input, Categorical)
+                problem_context.problem.inputs.names[i]
+                in problem_context.list_of_variables_without_higher_order_terms
+                and problem_context.problem.inputs.names[j]
+                in problem_context.list_of_variables_without_higher_order_terms
             )
 
             if exlude_flag:
@@ -274,17 +275,10 @@ def fully_quadratic_formula(
         for j in range(i):
             # exclude h.o. terms for categoricals
             exlude_flag = (
-                (
-                    problem_context.problem.inputs.names[i]
-                    in problem_context.list_of_categorical_values
-                )
-                or isinstance(input, Categorical)
-            ) and (
-                (
-                    problem_context.problem.inputs.names[j]
-                    in problem_context.list_of_categorical_values
-                )
-                or isinstance(input, Categorical)
+                problem_context.problem.inputs.names[i]
+                in problem_context.list_of_variables_without_higher_order_terms
+                and problem_context.problem.inputs.names[j]
+                in problem_context.list_of_variables_without_higher_order_terms
             )
             if exlude_flag:
                 """"""
@@ -298,8 +292,8 @@ def fully_quadratic_formula(
     formula += "".join(
         [
             ""
-            if (input.name in problem_context.list_of_categorical_values)
-            or isinstance(input, Categorical)  # exclude h.o. terms for categoricals
+            if input.name
+            in problem_context.list_of_variables_without_higher_order_terms  # exclude h.o. terms for categoricals
             else "{" + input.name + "**2} + "
             for input in problem_context.problem.inputs
         ]
