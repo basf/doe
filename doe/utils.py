@@ -274,7 +274,7 @@ def fully_quadratic_formula(
                 in problem_context.list_of_categorical_values
                 or isinstance(input, Categorical)
             )
-            if exlude_flag :
+            if exlude_flag:
                 """"""
             else:
                 formula += (
