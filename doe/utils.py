@@ -114,7 +114,7 @@ class ProblemContext:
 
 def get_formula_from_string(
     model_type: Union[str, Formula] = "linear",
-    problem_context: ProblemContext = None,
+    problem_context: Optional[ProblemContext] = None,
     rhs_only: bool = True,
 ) -> Formula:
     """Reformulates a string describing a model or certain keywords as Formula objects.
@@ -230,12 +230,16 @@ def linear_and_interactions_formula(
         for j in range(i):
             # exclude h.o. terms for categoricals
             exlude_flag = (
-                problem_context.problem.inputs.names[i]
-                in problem_context.list_of_categorical_values
+                (
+                    problem_context.problem.inputs.names[i]
+                    in problem_context.list_of_categorical_values
+                )
                 or isinstance(input, Categorical)
             ) and (
-                problem_context.problem.inputs.names[j]
-                in problem_context.list_of_categorical_values
+                (
+                    problem_context.problem.inputs.names[j]
+                    in problem_context.list_of_categorical_values
+                )
                 or isinstance(input, Categorical)
             )
 
@@ -270,12 +274,16 @@ def fully_quadratic_formula(
         for j in range(i):
             # exclude h.o. terms for categoricals
             exlude_flag = (
-                problem_context.problem.inputs.names[i]
-                in problem_context.list_of_categorical_values
+                (
+                    problem_context.problem.inputs.names[i]
+                    in problem_context.list_of_categorical_values
+                )
                 or isinstance(input, Categorical)
             ) and (
-                problem_context.problem.inputs.names[j]
-                in problem_context.list_of_categorical_values
+                (
+                    problem_context.problem.inputs.names[j]
+                    in problem_context.list_of_categorical_values
+                )
                 or isinstance(input, Categorical)
             )
             if exlude_flag:
