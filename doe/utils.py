@@ -201,7 +201,7 @@ def linear_and_quadratic_formula(
     formula += "".join(
         [
             ""
-            if input.name in problem_context.list_of_categorical_values
+            if (input.name in problem_context.list_of_categorical_values) or isinstance(input, Categorical)
             else "{" + input.name + "**2} + "
             for input in problem_context.problem.inputs
         ]
@@ -226,12 +226,17 @@ def linear_and_interactions_formula(
     formula = "".join([input.name + " + " for input in problem_context.problem.inputs])
     for i in range(problem_context.problem.n_inputs):
         for j in range(i):
-            if (
+            exlude_flag = (
                 problem_context.problem.inputs.names[i]
                 in problem_context.list_of_categorical_values
-                and problem_context.problem.inputs.names[j]
+                or isinstance(input, Categorical)
+            ) and (
+                problem_context.problem.inputs.names[j]
                 in problem_context.list_of_categorical_values
-            ):
+                or isinstance(input, Categorical)
+            )
+
+            if exlude_flag:
                 """"""
             else:
                 formula += (
@@ -260,12 +265,16 @@ def fully_quadratic_formula(
     formula = "".join([input.name + " + " for input in problem_context.problem.inputs])
     for i in range(problem_context.problem.n_inputs):
         for j in range(i):
-            if (
+             exlude_flag = (
                 problem_context.problem.inputs.names[i]
                 in problem_context.list_of_categorical_values
-                and problem_context.problem.inputs.names[j]
+                or isinstance(input, Categorical)
+            ) and (
+                problem_context.problem.inputs.names[j]
                 in problem_context.list_of_categorical_values
-            ):
+                or isinstance(input, Categorical)
+            )
+            if exlude_flag :
                 """"""
             else:
                 formula += (
@@ -277,7 +286,7 @@ def fully_quadratic_formula(
     formula += "".join(
         [
             ""
-            if input.name in problem_context.list_of_categorical_values
+            if (input.name in problem_context.list_of_categorical_values) or isinstance(input, Categorical)
             else "{" + input.name + "**2} + "
             for input in problem_context.problem.inputs
         ]

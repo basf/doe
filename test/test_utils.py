@@ -217,6 +217,86 @@ def test_formula_from_string_with_categoricals():
     assert all(term in terms for term in model_formula.terms)
     assert all(term in model_formula.terms for term in terms)
 
+    problem_context = ProblemContext(problem).relax_problem()
+
+    model_formula = problem_context.get_formula_from_string(model_type="linear")
+    # linear and interaction
+    terms = [
+        "1",
+        "x1____a",
+        "x1____b",
+        "x1____c",
+        "x2____a",
+        "x2____b",
+        "x2____c",
+        "x4",
+    ]
+    model_formula = problem_context.get_formula_from_string(model_type="linear")
+    assert all(term in terms for term in model_formula.terms)
+    assert all(term in model_formula.terms for term in terms)
+
+    terms = [
+        "1",
+        "x1____a",
+        "x1____b",
+        "x1____c",
+        "x2____a",
+        "x2____b",
+        "x2____c",
+        "x4",
+        "x4**2",
+    ]
+    model_formula = problem_context.get_formula_from_string(
+        model_type="linear-and-quadratic"
+    )
+    assert all(term in terms for term in model_formula.terms)
+    assert all(term in model_formula.terms for term in terms)
+
+    terms = [
+        "1",
+        "x1____a",
+        "x1____b",
+        "x1____c",
+        "x2____a",
+        "x2____b",
+        "x2____c",
+        "x4",
+        "x1____a:x4",
+        "x1____b:x4",
+        "x1____c:x4",
+        "x2____a:x4",
+        "x2____b:x4",
+        "x2____c:x4",
+    ]
+    model_formula = problem_context.get_formula_from_string(
+        model_type="linear-and-interactions"
+    )
+    assert all(term in terms for term in model_formula.terms)
+    assert all(term in model_formula.terms for term in terms)
+
+    terms = [
+        "1",
+        "x1____a",
+        "x1____b",
+        "x1____c",
+        "x2____a",
+        "x2____b",
+        "x2____c",
+        "x4",
+        "x1____a:x4",
+        "x1____b:x4",
+        "x1____c:x4",
+        "x2____a:x4",
+        "x2____b:x4",
+        "x2____c:x4",
+        "x4**2",
+    ]
+    model_formula = problem_context.get_formula_from_string(
+        model_type="fully-quadratic"
+    )
+    assert all(term in terms for term in model_formula.terms)
+    assert all(term in model_formula.terms for term in terms)
+
 
 def test_n_zero_eigvals_unconstrained():
     # 5 continous & 1 categorical inputs
