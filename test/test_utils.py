@@ -143,12 +143,8 @@ def test_formula_from_string_with_categoricals():
     # linear and interaction
     terms = [
         "1",
-        "x1____a",
-        "x1____b",
-        "x1____c",
-        "x2____a",
-        "x2____b",
-        "x2____c",
+        "x1",
+        "x2",
         "x4",
     ]
     model_formula = problem_context.get_formula_from_string(model_type="linear")
@@ -157,12 +153,8 @@ def test_formula_from_string_with_categoricals():
 
     terms = [
         "1",
-        "x1____a",
-        "x1____b",
-        "x1____c",
-        "x2____a",
-        "x2____b",
-        "x2____c",
+        "x1",
+        "x2",
         "x4",
         "x4**2",
     ]
@@ -174,19 +166,11 @@ def test_formula_from_string_with_categoricals():
 
     terms = [
         "1",
-        "x1____a",
-        "x1____b",
-        "x1____c",
-        "x2____a",
-        "x2____b",
-        "x2____c",
+        "x1",
+        "x2",
         "x4",
-        "x1____a:x4",
-        "x1____b:x4",
-        "x1____c:x4",
-        "x2____a:x4",
-        "x2____b:x4",
-        "x2____c:x4",
+        "x1:x4",
+        "x2:x4",
     ]
     model_formula = problem_context.get_formula_from_string(
         model_type="linear-and-interactions"
@@ -196,19 +180,11 @@ def test_formula_from_string_with_categoricals():
 
     terms = [
         "1",
-        "x1____a",
-        "x1____b",
-        "x1____c",
-        "x2____a",
-        "x2____b",
-        "x2____c",
+        "x1",
+        "x2",
         "x4",
-        "x1____a:x4",
-        "x1____b:x4",
-        "x1____c:x4",
-        "x2____a:x4",
-        "x2____b:x4",
-        "x2____c:x4",
+        "x1:x4",
+        "x2:x4",
         "x4**2",
     ]
     model_formula = problem_context.get_formula_from_string(
