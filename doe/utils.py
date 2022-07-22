@@ -202,7 +202,7 @@ def linear_and_quadratic_formula(
         [
             ""
             if (input.name in problem_context.list_of_categorical_values)
-            or isinstance(input, Categorical)
+            or isinstance(input, Categorical)  #exclude h.o. terms for categoricals
             else "{" + input.name + "**2} + "
             for input in problem_context.problem.inputs
         ]
