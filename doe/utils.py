@@ -13,7 +13,7 @@ from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 
 class ProblemContext:
-    def __init__(self, problem: opti.Problem, relax_problem: bool = True) -> None:
+    def __init__(self, problem: opti.Problem) -> None:
         """Provider of Problems
         Args:
             problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
@@ -22,11 +22,9 @@ class ProblemContext:
         self._cat_dict = {}
         self._cat_list = []
         self._problem = deepcopy(problem)
-        if relax_problem:
-            self._problem = self.relaxed_problem()
         self._original_problem = problem
 
-    def relaxed_problem(self) -> opti.Problem:
+    def relax_problem(self) -> opti.Problem:
         """Transforms an opti.problem with Categorical variables into its relaxed version.
         Categorical variables are transformed into their one-hot encoding taking values taking
         discrete values 0 or 1. Then, one-hot encoded variables are relaxed to take values

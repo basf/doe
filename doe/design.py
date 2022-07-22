@@ -96,7 +96,9 @@ def find_local_max_ipopt(
         local optimum.
 
     """
-    problem_context = ProblemContext(problem=problem, relax_problem=relax_problem)
+    problem_context = ProblemContext(problem=problem)
+    if relax_problem:
+        problem_context.relax_problem()
 
     D = problem_context.problem.n_inputs
     model_formula = problem_context.get_formula_from_string(
