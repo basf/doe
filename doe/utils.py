@@ -14,14 +14,14 @@ from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 class ProblemContext:
     def __init__(self, problem: opti.Problem) -> None:
-        """Provider of Problems
+        """Provider of Context of a Problem. Useful to keep track of relaxed variables, which have their own logic.
         Args:
             problem (opti.Problem): An opti problem defining the DoE problem together with model_type.
-            relax_problem (bool): Flag if problem needs to be relaxed
         """
         self._cat_dict = {}
         self._cat_list = []
         self._exclude_list = []
+        self._is_relaxed = False
         for input in problem.inputs:
             if isinstance(input, Categorical):
                 self._exclude_list.append(input.name)
@@ -29,10 +29,12 @@ class ProblemContext:
         self._original_problem = problem
 
     def relax_problem(self) -> None:
-        """Transforms the owned opti.problem with Categorical variables into its relaxed version.
-        Categorical variables are transformed into their one-hot encoding taking values taking
-        discrete values 0 or 1. Then, one-hot encoded variables are relaxed to take values
-        between 0 and 1, while fulfilling the constraint, that they have to sum up to 1.
+        """Transforms the owned opti.problem with Categorical and/or Discrete variables into
+        its relaxed version. Categorical variables are transformed into their one-hot encoding
+        taking values taking discrete values 0 or 1. Then, one-hot encoded variables are relaxed
+        to take values between 0 and 1, while fulfilling the constraint, that they have to
+        sum up to 1. Discrete variables are just replaxed with Continuous Variables with
+        appropriate bounds.
 
         Returns:
             None.
@@ -67,7 +69,12 @@ class ProblemContext:
             constraints=new_constraints,
         )
         self._problem = problem
+        self._is_relaxed = True
         return None
+
+    def unrelax(self) -> None:
+        self._problem = self._original_problem
+        self._is_relaxed = False
 
     def transform_onto_original_problem(
         self, feasible_points: pd.DataFrame
@@ -95,6 +102,10 @@ class ProblemContext:
     @property
     def problem(self) -> opti.Problem:
         return self._problem
+
+    @property
+    def is_relaxed(self) -> bool:
+        self._is_relaxed
 
     @property
     def list_of_categorical_variables(self) -> List[str]:
@@ -129,9 +140,10 @@ def get_formula_from_string(
 
     Args:
         model_type (str or Formula): A formula containing all model terms.
+        problem_context (ProblemContext): A problem context that nests necessary information on
+        how to translate a problem to a formula. Contains a problem.
         rhs_only (bool): The function returns only the right hand side of the formula if set to True.
         Returns:
-        exclude_polynomical (List[str]): List of varriables that should only included in first order.
     A Formula object describing the model that was given as string or keyword.
     """
     # set maximum recursion depth to higher value
@@ -179,8 +191,8 @@ def linear_formula(
     """Reformulates a string describing a linear-model or certain keywords as Formula objects.
         formula = model_type + "   "
 
-    Args:
-        None
+    Args: problem_context (ProblemContext): A problem context that nests necessary information on
+        how to translate a problem to a formula. Contains a problem.
 
     Returns:
         A string describing the model that was given as string or keyword.
@@ -197,8 +209,8 @@ def linear_and_quadratic_formula(
 ) -> str:
     """Reformulates a string describing a linear-and-quadratic model or certain keywords as Formula objects.
 
-    Args:
-        None
+    Args: problem_context (ProblemContext): A problem context that nests necessary information on
+        how to translate a problem to a formula. Contains a problem.
 
     Returns:
         A string describing the model that was given as string or keyword.
@@ -224,8 +236,8 @@ def linear_and_interactions_formula(
 ) -> str:
     """Reformulates a string describing a linear-and-interactions model or certain keywords as Formula objects.
 
-    Args:
-        None
+    Args: problem_context (ProblemContext): A problem context that nests necessary information on
+        how to translate a problem to a formula. Contains a problem.
 
     Returns:
         A string describing the model that was given as string or keyword.
@@ -261,8 +273,8 @@ def fully_quadratic_formula(
 ) -> str:
     """Reformulates a string describing a fully-quadratic model or certain keywords as Formula objects.
 
-    Args:
-        None
+    Args: problem_context (ProblemContext): A problem context that nests necessary information on
+        how to translate a problem to a formula. Contains a problem.
 
     Returns:
         A string describing the model that was given as string or keyword.
