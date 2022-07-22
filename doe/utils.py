@@ -105,7 +105,7 @@ class ProblemContext:
 
     @property
     def is_relaxed(self) -> bool:
-        self._is_relaxed
+        return self._is_relaxed
 
     @property
     def list_of_categorical_variables(self) -> List[str]:
