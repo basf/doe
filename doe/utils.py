@@ -99,6 +99,22 @@ class ProblemContext:
                 feasible_points[input.name] = discrete_col
         return feasible_points
 
+    def transform_onto_relaxed_problem(
+        self, feasible_points: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Transforms feasible points of the original problem onto a feasible point
+        of the relaxed problem.
+        Returns:
+            Feasible points of the relaxed problem
+        """
+        for input in self.original_problem.inputs:
+            if isinstance(input, opti.Categorical):
+                new_cols = input.to_onehot_encoding(feasible_points[input.name])
+                feasible_points = pd.concat(
+                    [feasible_points.drop([input.name], axis=1), new_cols], axis=1
+                )
+        return feasible_points
+
     @property
     def problem(self) -> opti.Problem:
         return self._problem
@@ -527,10 +543,16 @@ def metrics(
     Returns:
         A pd.Series containing the values for the three metrics.
     """
-
+    problem_context = ProblemContext(problem=problem)
+    problem_context.relax_problem()
     # try to determine G-efficiency
     try:
-        g_eff = g_efficiency(X, problem, delta, n_samples)
+        g_eff = g_efficiency(
+            problem_context.transform_onto_relaxed_problem(X),
+            problem_context.problem,
+            delta,
+            n_samples,
+        )
 
     except Exception:
         warnings.warn(
@@ -541,8 +563,12 @@ def metrics(
 
     return pd.Series(
         {
-            "D-optimality": d_optimality(X, tol),
-            "A-optimality": a_optimality(X, tol),
+            "D-optimality": d_optimality(
+                problem_context.transform_onto_relaxed_problem(X), tol
+            ),
+            "A-optimality": a_optimality(
+                problem_context.transform_onto_relaxed_problem(X), tol
+            ),
             "G-efficiency": g_eff,
         }
     )

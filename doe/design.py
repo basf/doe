@@ -97,6 +97,15 @@ def find_local_max_ipopt(
 
     """
     problem_context = ProblemContext(problem=problem)
+    # determine number of experiments
+    n_experiments_min = (
+        len(
+            problem_context.get_formula_from_string(
+                model_type=model_type, rhs_only=True
+            ).terms
+        )
+        + 3
+    )
     if relax_problem:
         problem_context.relax_problem()
 
@@ -127,8 +136,6 @@ def find_local_max_ipopt(
                 constraints=_constraints,
             )
 
-    # determine number of experiments
-    n_experiments_min = len(model_formula.terms) + 3
     if n_experiments is None:
         n_experiments = n_experiments_min
     elif n_experiments < n_experiments_min:
