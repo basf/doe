@@ -108,9 +108,9 @@ class ProblemContext:
     def value2cat(self, value: pd.Series, input: opti.Categorical):
         if np.max(value.values) < 0.5 + CAT_TOL:
             warnings.warn(
-                f"Projection of value {value} to category {input.domain[np.argmax(x.values)]} for categorical {input.name} not within tolerance of {CAT_TOL}."
+                f"Projection of value {value} to category {input.domain[np.argmax(value.values)]} for categorical {input.name} not within tolerance of {CAT_TOL}."
             )
-        return input.domain[np.argmax(x.values)]
+        return input.domain[np.argmax(value.values)]
 
     def value2discrete(self, value: np.float64, input: opti.Discrete):
         if abs(input.round(value) - value) > DISCRETE_TOL:
