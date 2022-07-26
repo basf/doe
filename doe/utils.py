@@ -8,8 +8,11 @@ import numpy as np
 import opti
 import pandas as pd
 from formulaic import Formula
-from opti import Categorical, Discrete
+from opti import Categorical, Discrete, parameter
 from scipy.optimize import LinearConstraint, NonlinearConstraint
+
+CAT_TOL = 0.1
+DISCRETE_TOL = 0.1
 
 
 class ProblemContext:
@@ -88,7 +91,7 @@ class ProblemContext:
         for input in self.original_problem.inputs:
             if isinstance(input, opti.Categorical):
                 cat_col = [
-                    input.domain[np.argmax(x.values)]
+                    self.value2cat(x, input)
                     for _, x in feasible_points[self._cat_dict[input.name]].iterrows()
                 ]
                 feasible_points[input.name] = cat_col
@@ -96,9 +99,25 @@ class ProblemContext:
                     self._cat_dict[input.name], axis=1
                 )
             if isinstance(input, opti.Discrete):
-                discrete_col = [input.round(x) for x in feasible_points[input.name]]
+                discrete_col = [
+                    self.value2discrete(x, input) for x in feasible_points[input.name]
+                ]
                 feasible_points[input.name] = discrete_col
         return feasible_points
+
+    def value2cat(self, value: pd.Series, input: opti.Categorical):
+        if np.max(value.values) < 0.5 + CAT_TOL:
+            warnings.warn(
+                f"Projection of value {value} to category {input.domain[np.argmax(x.values)]} for categorical {input.name} not within tolerance of {CAT_TOL}."
+            )
+        return input.domain[np.argmax(x.values)]
+
+    def value2discrete(self, value: np.float64, input: opti.Discrete):
+        if abs(input.round(value) - value) > DISCRETE_TOL:
+            warnings.warn(
+                f"Projection of value {value} to discrete value {input.round(value)} for discrete variable {input.name} not within tolerance of {DISCRETE_TOL}."
+            )
+        return input.domain[np.argmax(x.values)]
 
     def transform_onto_relaxed_problem(
         self, feasible_points: pd.DataFrame
