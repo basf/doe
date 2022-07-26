@@ -117,7 +117,7 @@ class ProblemContext:
             warnings.warn(
                 f"Value too close to decision boundary! Projection of value {value} to discrete value {input.round(value)} for discrete variable {input.name} not within tolerance of {DISCRETE_TOL}."
             )
-        return input.domain[np.argmax(value.values)]
+        return input.domain[np.argmax(value)]
 
     def transform_onto_relaxed_problem(
         self, feasible_points: pd.DataFrame
