@@ -132,6 +132,10 @@ class ProblemContext:
         return self._cat_list + self._exclude_list
 
     @property
+    def has_categoricals(self) -> bool:
+        return len(self._cat_list + self._exclude_list) > 0
+
+    @property
     def original_problem(self) -> opti.Problem:
         return self._original_problem
 
@@ -543,12 +547,19 @@ def metrics(
     Returns:
         A pd.Series containing the values for the three metrics.
     """
+
+    # X has to contain numerical values for metrics
+    # thus transform to one-hot-encoded matrix
+    # with properly transformed problem
     problem_context = ProblemContext(problem=problem)
-    problem_context.relax_problem()
+    if problem_context.has_categoricals:
+        problem_context.relax_problem()
+        X = problem_context.transform_onto_relaxed_problem(X)
+
     # try to determine G-efficiency
     try:
         g_eff = g_efficiency(
-            problem_context.transform_onto_relaxed_problem(X),
+            X,
             problem_context.problem,
             delta,
             n_samples,
@@ -563,12 +574,8 @@ def metrics(
 
     return pd.Series(
         {
-            "D-optimality": d_optimality(
-                problem_context.transform_onto_relaxed_problem(X), tol
-            ),
-            "A-optimality": a_optimality(
-                problem_context.transform_onto_relaxed_problem(X), tol
-            ),
+            "D-optimality": d_optimality(X, tol),
+            "A-optimality": a_optimality(X, tol),
             "G-efficiency": g_eff,
         }
     )
