@@ -75,6 +75,7 @@ class ProblemContext:
     def unrelax(self) -> None:
         self._problem = self._original_problem
         self._is_relaxed = False
+        self._cat_dict = []
 
     def transform_onto_original_problem(
         self, feasible_points: pd.DataFrame
