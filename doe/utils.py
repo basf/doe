@@ -157,7 +157,7 @@ class ProblemContext:
         )
 
 def value2cat(value: pd.Series, input: opti.Categorical):
-    if np.max(value.values) < 0.5 + CAT_TOL:
+    if np.max(value.values) < 1/len(value.values) + CAT_TOL:
         warnings.warn(
             f"Value too close to decision boundary! Projection of value {np.max(value.values)} to category {input.domain[np.argmax(value.values)]} for categorical {input.name} not within tolerance of {CAT_TOL}."
         )
