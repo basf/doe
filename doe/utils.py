@@ -91,7 +91,7 @@ class ProblemContext:
         for input in self.original_problem.inputs:
             if isinstance(input, opti.Categorical):
                 cat_col = [
-                    self.value2cat(x, input)
+                    value2cat(x, input)
                     for _, x in feasible_points[self._cat_dict[input.name]].iterrows()
                 ]
                 feasible_points[input.name] = cat_col
@@ -100,24 +100,10 @@ class ProblemContext:
                 )
             if isinstance(input, opti.Discrete):
                 discrete_col = [
-                    self.value2discrete(x, input) for x in feasible_points[input.name]
+                    value2discrete(x, input) for x in feasible_points[input.name]
                 ]
                 feasible_points[input.name] = discrete_col
         return feasible_points
-
-    def value2cat(self, value: pd.Series, input: opti.Categorical):
-        if np.max(value.values) < 0.5 + CAT_TOL:
-            warnings.warn(
-                f"Value too close to decision boundary! Projection of value {np.max(value.values)} to category {input.domain[np.argmax(value.values)]} for categorical {input.name} not within tolerance of {CAT_TOL}."
-            )
-        return input.domain[np.argmax(value.values)]
-
-    def value2discrete(self, value: np.float64, input: opti.Discrete):
-        if abs(input.round(value) - value) > DISCRETE_TOL:
-            warnings.warn(
-                f"Value too close to decision boundary! Projection of value {value} to discrete value {input.round(value)} for discrete variable {input.name} not within tolerance of {DISCRETE_TOL}."
-            )
-        return input.domain[np.argmax(value)]
 
     def transform_onto_relaxed_problem(
         self, feasible_points: pd.DataFrame
@@ -170,6 +156,20 @@ class ProblemContext:
             rhs_only=rhs_only,
         )
 
+
+def value2cat(value: pd.Series, input: opti.Categorical):
+    if np.max(value.values) < 0.5 + CAT_TOL:
+        warnings.warn(
+            f"Value too close to decision boundary! Projection of value {np.max(value.values)} to category {input.domain[np.argmax(value.values)]} for categorical {input.name} not within tolerance of {CAT_TOL}."
+        )
+    return input.domain[np.argmax(value.values)]
+
+def value2discrete(value: np.float64, input: opti.Discrete):
+    if abs(input.round(value) - value) > DISCRETE_TOL:
+        warnings.warn(
+            f"Value too close to decision boundary! Projection of value {value} to discrete value {input.round(value)} for discrete variable {input.name} not within tolerance of {DISCRETE_TOL}."
+        )
+    return input.domain[np.argmax(value)]
 
 def get_formula_from_string(
     model_type: Union[str, Formula] = "linear",
