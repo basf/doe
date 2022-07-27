@@ -156,12 +156,14 @@ class ProblemContext:
             rhs_only=rhs_only,
         )
 
+
 def value2cat(value: pd.Series, input: opti.Categorical):
-    if np.max(value.values) < 1/len(value.values) + CAT_TOL:
+    if np.max(value.values) < 1 / len(value.values) + CAT_TOL:
         warnings.warn(
             f"Value too close to decision boundary! Projection of value {np.max(value.values)} to category {input.domain[np.argmax(value.values)]} for categorical {input.name} not within tolerance of {CAT_TOL}."
         )
     return input.domain[np.argmax(value.values)]
+
 
 def value2discrete(value: np.float64, input: opti.Discrete):
     if abs(input.round(value) - value) > DISCRETE_TOL:
@@ -169,6 +171,7 @@ def value2discrete(value: np.float64, input: opti.Discrete):
             f"Value too close to decision boundary! Projection of value {value} to discrete value {input.round(value)} for discrete variable {input.name} not within tolerance of {DISCRETE_TOL}."
         )
     return input.domain[np.argmax(value)]
+
 
 def get_formula_from_string(
     model_type: Union[str, Formula] = "linear",
