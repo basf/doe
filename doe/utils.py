@@ -156,7 +156,6 @@ class ProblemContext:
             rhs_only=rhs_only,
         )
 
-
 def value2cat(value: pd.Series, input: opti.Categorical):
     if np.max(value.values) < 0.5 + CAT_TOL:
         warnings.warn(
