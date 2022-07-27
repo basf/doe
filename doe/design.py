@@ -11,8 +11,8 @@ from scipy.optimize._minimize import standardize_constraints
 from doe.jacobian import JacobianForLogdet
 from doe.sampling import OptiSampling, Sampling
 from doe.utils import (
+    ProblemContext,
     constraints_as_scipy_constraints,
-    get_formula_from_string,
     metrics,
     nchoosek_constraints_as_bounds,
 )
@@ -24,7 +24,7 @@ def logD(A: np.ndarray, delta: float = 1e-7) -> float:
 
 
 def get_objective(
-    problem: opti.Problem,
+    problem_context: ProblemContext,
     model_type: Union[str, Formula],
     delta: float = 1e-7,
 ) -> Callable:
@@ -39,15 +39,17 @@ def get_objective(
         A function computing the objective -logD for a given input vector x
 
     """
-    D = problem.n_inputs
-    model_formula = get_formula_from_string(
-        problem=problem, model_type=model_type, rhs_only=True
+    D = problem_context.problem.n_inputs
+    model_formula = problem_context.get_formula_from_string(
+        model_type=model_type, rhs_only=True
     )
 
     # define objective function
     def objective(x):
         # evaluate model terms
-        A = pd.DataFrame(x.reshape(len(x) // D, D), columns=problem.inputs.names)
+        A = pd.DataFrame(
+            x.reshape(len(x) // D, D), columns=problem_context.problem.inputs.names
+        )
         A = model_formula.get_model_matrix(A)
 
         # compute objective value
@@ -67,6 +69,7 @@ def find_local_max_ipopt(
     jacobian_building_block: Optional[Callable] = None,
     sampling: Union[Sampling, np.ndarray] = OptiSampling,
     fixed_experiments: Optional[np.ndarray] = None,
+    relax_problem: bool = True,
 ) -> pd.DataFrame:
     """Function computing a d-optimal design" for a given opti problem and model.
 
@@ -84,37 +87,55 @@ def find_local_max_ipopt(
         sampling (Sampling, np.ndarray): Sampling class or a np.ndarray object containing the initial guess.
         fixed_experiments (np.ndarray): numpy array containing experiments that will definitely part of the design.
             Values are set before the optimization.
+        relax_problem (bool): Needed to solve for categorical and discrete inputs. If flag True, a relaxed
+            version of the problem is generated, solved, and its solution projected into the feasible space
+            of the original problem
 
     Returns:
         A pd.DataFrame object containing the best found input for the experiments. This is only a
         local optimum.
 
     """
-    D = problem.n_inputs
-    model_formula = get_formula_from_string(
-        problem=problem, model_type=model_type, rhs_only=True
+    problem_context = ProblemContext(problem=problem)
+    # determine number of experiments
+    n_experiments_min = (
+        len(
+            problem_context.get_formula_from_string(
+                model_type=model_type, rhs_only=True
+            ).terms
+        )
+        + 3
+    )
+    if relax_problem:
+        problem_context.relax_problem()
+
+    D = problem_context.problem.n_inputs
+    model_formula = problem_context.get_formula_from_string(
+        model_type=model_type, rhs_only=True
     )
 
     # check if there are NChooseK constraints that must be ignored when sampling with opti.Problem.sample_inputs
-    _problem = problem
-    if problem.n_constraints > 0:
-        if any([isinstance(c, opti.NChooseK) for c in problem.constraints]) and not all(
-            [isinstance(c, opti.NChooseK) for c in problem.constraints]
+    _problem = problem_context.problem
+    if problem_context.problem.n_constraints > 0:
+        if any(
+            [isinstance(c, opti.NChooseK) for c in problem_context.problem.constraints]
+        ) and not all(
+            [isinstance(c, opti.NChooseK) for c in problem_context.problem.constraints]
         ):
             warnings.warn(
                 "Sampling of points fulfilling this problem's constraints is not implemented."
             )
 
             _constraints = []
-            for c in problem.constraints:
+            for c in problem_context.problem.constraints:
                 if not isinstance(c, opti.NChooseK):
                     _constraints.append(c)
             _problem = opti.Problem(
-                inputs=problem.inputs, outputs=problem.outputs, constraints=_constraints
+                inputs=problem_context.problem.inputs,
+                outputs=problem_context.problem.outputs,
+                constraints=_constraints,
             )
 
-    # determine number of experiments
-    n_experiments_min = len(model_formula.terms) + 3
     if n_experiments is None:
         n_experiments = n_experiments_min
     elif n_experiments < n_experiments_min:
@@ -129,11 +150,11 @@ def find_local_max_ipopt(
         x0 = sampling(_problem).sample(n_experiments)
 
     # get objective function
-    objective = get_objective(problem, model_type, delta=delta)
+    objective = get_objective(problem_context, model_type, delta=delta)
 
     # get jacobian
     J = JacobianForLogdet(
-        problem,
+        problem_context.problem,
         model_formula,
         n_experiments,
         delta=delta,
@@ -141,15 +162,19 @@ def find_local_max_ipopt(
     )
 
     # write constraints as scipy constraints
-    constraints = constraints_as_scipy_constraints(problem, n_experiments, tol)
+    constraints = constraints_as_scipy_constraints(
+        problem_context.problem, n_experiments, tol
+    )
 
     # find bounds imposing NChooseK constraints
-    bounds = nchoosek_constraints_as_bounds(problem, n_experiments)
+    bounds = nchoosek_constraints_as_bounds(problem_context.problem, n_experiments)
 
     # fix experiments if any are given
     if fixed_experiments is not None:
         fixed_experiments = np.array(fixed_experiments)
-        check_fixed_experiments(problem, n_experiments, fixed_experiments)
+        check_fixed_experiments(
+            problem_context.problem, n_experiments, fixed_experiments
+        )
         for i, val in enumerate(fixed_experiments.flatten()):
             bounds[i] = (val, val)
             x0[i] = val
@@ -174,16 +199,18 @@ def find_local_max_ipopt(
 
     A = pd.DataFrame(
         result["x"].reshape(n_experiments, D),
-        columns=problem.inputs.names,
+        columns=problem_context.problem.inputs.names,
         index=[f"exp{i}" for i in range(n_experiments)],
     )
+
+    A = problem_context.transform_onto_original_problem(A)
 
     # exit message
     if _ipopt_options[b"print_level"] > 12:
         for key in ["fun", "message", "nfev", "nit", "njev", "status", "success"]:
             print(key + ":", result[key])
         X = model_formula.get_model_matrix(A).to_numpy()
-        d = metrics(X, problem, n_samples=1000)
+        d = metrics(X, problem_context.problem, n_samples=1000)
         print("metrics:", d)
 
     return A
