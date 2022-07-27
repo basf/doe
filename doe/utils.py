@@ -8,7 +8,7 @@ import numpy as np
 import opti
 import pandas as pd
 from formulaic import Formula
-from opti import Categorical, Discrete, parameter
+from opti import Categorical, Discrete
 from scipy.optimize import LinearConstraint, NonlinearConstraint
 
 CAT_TOL = 0.1
