@@ -203,7 +203,8 @@ def find_local_max_ipopt(
         index=[f"exp{i}" for i in range(n_experiments)],
     )
 
-    A = problem_context.transform_onto_original_problem(A)
+    if problem_context.is_relaxed:
+        A = problem_context.transform_onto_original_problem(A)
 
     # exit message
     if _ipopt_options[b"print_level"] > 12:
