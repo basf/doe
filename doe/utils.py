@@ -170,7 +170,7 @@ def value2discrete(value: np.float64, input: opti.Discrete):
         warnings.warn(
             f"Value too close to decision boundary! Projection of value {value} to discrete value {input.round(value)} for discrete variable {input.name} not within tolerance of {DISCRETE_TOL}."
         )
-    return input.domain[np.argmax(value)]
+    return input.round(value)
 
 
 def get_formula_from_string(
