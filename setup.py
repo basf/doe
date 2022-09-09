@@ -18,7 +18,7 @@ setup(
     description="Advanced & flexible design of experiments",
     packages=["doe"],
     install_requires=[
-        "formulaic",
+        "formulaic>=0.5",
         "loguru",
         "mopti",
         "numpy",
