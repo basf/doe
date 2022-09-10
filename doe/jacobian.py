@@ -72,7 +72,7 @@ class JacobianForLogdet:
         self.vars = self.problem.inputs.names
         self.n_vars = self.problem.n_inputs
 
-        self.model_terms = np.array(model.terms, dtype=str)
+        self.model_terms = np.array([str(t) for t in model], dtype=str)
         self.n_model_terms = len(self.model_terms)
 
         if jacobian_building_block is not None:
