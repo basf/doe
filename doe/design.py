@@ -106,7 +106,12 @@ def find_local_max_ipopt(
         )
         + 3
     )
-    if relax_problem:
+
+    assert (
+        not problem_context.has_constraint_with_cats_or_discrete_variables
+    ), "Discrete or categorical variables subject to constraints are not supported!"
+
+    if problem_context.has_categoricals or problem_context.has_discrete:
         problem_context.relax_problem()
 
     D = problem_context.problem.n_inputs

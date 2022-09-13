@@ -157,6 +157,74 @@ def test_find_local_max_ipopt_sampling():
     find_local_max_ipopt(problem, "linear", n_experiments=10, sampling=sampling)
 
 
+def test_find_local_max_ipopt_discrete():
+    # define problem: no NChooseK constraints
+    inputs = [opti.Continuous("x1", [0, 1]), opti.Discrete("x2", [0.2, 0.8])]
+    problem = opti.Problem(
+        inputs=opti.Parameters(inputs),
+        outputs=[opti.Continuous("y")],
+        constraints=[],
+    )
+
+    np.random.seed(1)
+    data = find_local_max_ipopt(
+        problem=problem, model_type="fully-quadratic"
+    ).to_numpy()
+
+    correct_data = np.array(
+        [
+            [1.0, 0.2],
+            [1.0, 0.8],
+            [0.0, 0.2],
+            [0.0, 0.8],
+            [0.5, 0.2],
+            [0.5, 0.8],
+        ]
+    )
+
+    assert np.shape(data) == (9, 2)
+    for row in data:
+        assert np.any([np.allclose(row, _row, atol=2e-3) for _row in correct_data])
+    for row in correct_data:
+        assert np.any([np.allclose(row, _row, atol=2e-3) for _row in data])
+
+
+def test_find_local_max_ipopt_categorical():
+    # define problem: no NChooseK constraints
+    inputs = [opti.Continuous("x1", [0, 1]), opti.Categorical("x2", ["a", "b"])]
+    problem = opti.Problem(
+        inputs=opti.Parameters(inputs),
+        outputs=[opti.Continuous("y")],
+        constraints=[],
+    )
+
+    np.random.seed(1)
+    data = find_local_max_ipopt(
+        problem=problem, model_type="fully-quadratic"
+    ).to_numpy()
+
+    correct_data = np.array(
+        [
+            [1.0, "a"],
+            [1.0, "b"],
+            [0.0, "a"],
+            [0.0, "b"],
+            [0.5, "a"],
+            [0.5, "b"],
+        ]
+    )
+
+    assert np.shape(data) == (8, 2)
+    for row in data:
+        assert np.any(
+            [np.allclose(row[0], float(_row[0]), atol=2e-3) for _row in correct_data]
+        )
+        assert np.any([row[1] == _row[1] for _row in correct_data])
+    for row in correct_data:
+        assert np.any([np.allclose(float(row[0]), _row[0], atol=2e-3) for _row in data])
+        assert np.any([row[1] == _row[1] for _row in data])
+
+
 def test_find_local_max_ipopt_fixed_experiments():
     # define problem: no NChooseK constraints, 1 fixed_experiment
     problem = opti.Problem(
