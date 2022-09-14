@@ -43,3 +43,10 @@ design = find_local_max_ipopt(problem, "linear")
 ```
 
 ![doe_example](docs/assets/getting_started_constraints_local_opt.PNG)
+
+---
+
+## Contributors
+<a href="https://github.com/basf/doe/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=basf/doe" />
+</a>
