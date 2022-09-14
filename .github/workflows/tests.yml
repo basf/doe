@@ -15,11 +15,11 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.9
-      - name: Run black, flake8 and isort
+      - name: Black, flake8 & isort
         run: |
           pip install black isort flake8
-          black --check opti test
-          flake8 --verbose opti test
+          black --check doe test
+          flake8 --verbose doe test
           isort . --check-only --verbose
       - name: Install
         run: |
