@@ -3,17 +3,18 @@
 DoE is a python package for generating (D-)optimal experimental designs. 
 It uses [opti](https://basf.github.io/mopti/) and [formulaic](https://matthewwardrop.github.io/formulaic/) for specifying the design space and model.
 
-You can find the documentation [here](http://bayesopt.docs.basf.net/doe).
+You can find the documentation [here](https://basf.github.io/doe).
 
 
 ## Install
 
-pyreto can be installed from [nexus.roqs.basf.net](https://developer.docs.basf.net/setup/python/#configure).
+DoE can be installed with 
 ```
-pip install basf-doe
+pip install git+https://github.com/basf/doe.git
 ```
-Please make sure to have cyipopt installed. 
-On Windows with conda the easiest way to get this package is using
+
+Please make sure to have cyipopt installed.
+With conda the easiest way to get this package is using
 ```
 conda install -c conda-forge cyipopt
 ```
