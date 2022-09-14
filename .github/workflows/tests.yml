@@ -1,0 +1,38 @@
+name: Tests
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Black, flake8 & isort
+        run: |
+          pip install black isort flake8
+          black --check doe test
+          flake8 --verbose doe test
+          isort . --check-only --verbose
+      - name: Install
+        run: |
+          sudo apt-get -y --no-install-recommends install \
+            coinor-libipopt1v5 \
+            coinor-libipopt-dev \
+            libblas-dev \
+            liblapack-dev \
+            g++ \
+            gfortran \
+            pkg-config
+          pip install ipopt
+          pip install .[tests]
+      - name: Run tests
+        run: |
+          pytest

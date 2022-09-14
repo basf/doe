@@ -184,6 +184,36 @@ def test_formula_from_string_with_categoricals():
     )
 
 
+def test_has_constraint_with_discrete_or_categorical():
+    prob = opti.Problem(
+        inputs=[
+            opti.Continuous("x1", domain=[0, 100]),
+            opti.Continuous("x2", domain=[0, 100]),
+            opti.Continuous("x3", domain=[0, 100]),
+            opti.Discrete("discrete1", [0, 1, 5]),
+            opti.Discrete("discrete2", [0, 1]),
+        ],
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.LinearEquality(["x1", "x2", "discrete1"], rhs=1)],
+    )
+    problem_context = ProblemContext(problem=prob)
+    assert problem_context.has_constraint_with_cats_or_discrete_variables
+
+    prob = opti.Problem(
+        inputs=[
+            opti.Continuous("x1", domain=[0, 100]),
+            opti.Continuous("x2", domain=[0, 100]),
+            opti.Continuous("x3", domain=[0, 100]),
+            opti.Categorical("cat1", ["a", "b"]),
+            opti.Categorical("cat2", ["a", "b"]),
+        ],
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.LinearEquality(["cat1"], rhs="a")],
+    )
+    problem_context = ProblemContext(problem=prob)
+    assert problem_context.has_constraint_with_cats_or_discrete_variables
+
+
 def test_n_zero_eigvals_unconstrained():
     # 5 continous & 1 categorical inputs
     problem = opti.Problem(

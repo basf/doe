@@ -22,11 +22,15 @@ class ProblemContext:
         """
         self._cat_dict = {}
         self._cat_list = []
+        self._discrete_list = []
         self._exclude_list = []
         self._is_relaxed = False
         for input in problem.inputs:
             if isinstance(input, Categorical):
                 self._exclude_list.append(input.name)
+                self._cat_list.append(input.name)
+            if isinstance(input, Discrete):
+                self._discrete_list.append(input.name)
         self._problem = deepcopy(problem)
         self._original_problem = problem
 
@@ -54,7 +58,7 @@ class ProblemContext:
                 ]
                 for name in cat_names:
                     new_inputs.append(opti.Continuous(name, [0, 1]))
-                    self._cat_list.append(name)
+                    self._exclude_list.append(name)
                 self._cat_dict[input.name] = cat_names
                 new_constraints.append(opti.LinearEquality(names=cat_names, rhs=1))
             elif isinstance(input, Discrete):
@@ -76,8 +80,17 @@ class ProblemContext:
 
     def unrelax(self) -> None:
         self._problem = self._original_problem
+        self._cat_dict = {}
+        self._cat_list = []
+        self._discrete_list = []
+        self._exclude_list = []
         self._is_relaxed = False
-        self._cat_dict = []
+        for input in self._original_problem.inputs:
+            if isinstance(input, Categorical):
+                self._exclude_list.append(input.name)
+                self._cat_list.append(input.name)
+            if isinstance(input, Discrete):
+                self._discrete_list.append(input.name)
 
     def transform_onto_original_problem(
         self, feasible_points: pd.DataFrame
@@ -134,11 +147,34 @@ class ProblemContext:
 
     @property
     def list_of_variables_without_higher_order_terms(self) -> List[str]:
-        return self._cat_list + self._exclude_list
+        return self._exclude_list
 
     @property
     def has_categoricals(self) -> bool:
-        return len(self._cat_list + self._exclude_list) > 0
+        return len(self._cat_list) > 0
+
+    @property
+    def has_discrete(self) -> bool:
+        return len(self._discrete_list) > 0
+
+    @property
+    def has_constraint_with_cats_or_discrete_variables(self) -> bool:
+        if self._original_problem.constraints:
+            is_true = np.any(
+                [
+                    np.any(
+                        [
+                            name in self._discrete_list + self._cat_list
+                            for name in c.to_config().get("names")
+                            if name
+                        ]
+                    )
+                    for c in self._original_problem.constraints
+                    if c
+                ]
+            )
+            return is_true
+        return False
 
     @property
     def original_problem(self) -> opti.Problem:

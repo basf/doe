@@ -1,4 +1,4 @@
-FROM registry.roqs.basf.net/base-images/python:3.8 AS build
+FROM ubuntu:22.04
 
 USER root
 
