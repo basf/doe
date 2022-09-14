@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://bayesopt.docs.basf.net/doe/</loc>
+         <loc>https://basf.github.io/doe/</loc>
          <lastmod>2022-09-14</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://bayesopt.docs.basf.net/doe/install/</loc>
+         <loc>https://basf.github.io/doe/install/</loc>
          <lastmod>2022-09-14</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://bayesopt.docs.basf.net/doe/large_mixture/</loc>
+         <loc>https://basf.github.io/doe/large_mixture/</loc>
          <lastmod>2022-09-14</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://bayesopt.docs.basf.net/doe/modde_comparison/</loc>
+         <loc>https://basf.github.io/doe/modde_comparison/</loc>
          <lastmod>2022-09-14</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://bayesopt.docs.basf.net/doe/multiple_mixture_constraints/</loc>
+         <loc>https://basf.github.io/doe/multiple_mixture_constraints/</loc>
          <lastmod>2022-09-14</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://bayesopt.docs.basf.net/doe/nchoosek_constraint/</loc>
+         <loc>https://basf.github.io/doe/nchoosek_constraint/</loc>
          <lastmod>2022-09-14</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://bayesopt.docs.basf.net/doe/tips/</loc>
+         <loc>https://basf.github.io/doe/tips/</loc>
          <lastmod>2022-09-14</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://bayesopt.docs.basf.net/doe/tutorial/</loc>
+         <loc>https://basf.github.io/doe/tutorial/</loc>
          <lastmod>2022-09-14</lastmod>
          <changefreq>daily</changefreq>
     </url>
