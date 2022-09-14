@@ -1,10 +1,9 @@
-site_name: doe
-site_url: https://bayesopt.docs.basf.net/doe
-repo_name: doe
-repo_url: https://gitlab.roqs.basf.net/bayesopt/doe
+site_name: DoE
+site_url: https://basf.github.io/doe
+repo_name: DoE
+repo_url: https://github.com/basf/doe
 
 nav:
-  - BayesOpt (home): https://bayesopt.docs.basf.net
   - Overview: index.md
   - Getting started:
     - Install: install.md
@@ -18,7 +17,7 @@ nav:
 
 theme:
   name: material
-  repo_url: https://gitlab.roqs.basf.net/bayesopt/doe
+  repo_url: https://github.com/basf/doe
   logo: assets/logo.PNG
   favicon: assets/logo.PNG
   features:
