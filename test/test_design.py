@@ -184,9 +184,9 @@ def test_find_local_max_ipopt_discrete():
 
     assert np.shape(data) == (9, 2)
     for row in data:
-        assert np.any([np.allclose(row, _row, atol=2e-3) for _row in correct_data])
+        assert np.any([np.allclose(row, _row, atol=1e-2) for _row in correct_data])
     for row in correct_data:
-        assert np.any([np.allclose(row, _row, atol=2e-3) for _row in data])
+        assert np.any([np.allclose(row, _row, atol=1e-2) for _row in data])
 
 
 def test_find_local_max_ipopt_categorical():
@@ -217,16 +217,16 @@ def test_find_local_max_ipopt_categorical():
     assert np.shape(data) == (8, 2)
     for row in data:
         assert np.any(
-            [np.allclose(row[0], float(_row[0]), atol=2e-3) for _row in correct_data]
+            [np.allclose(row[0], float(_row[0]), atol=1e-2) for _row in correct_data]
         )
         assert np.any([row[1] == _row[1] for _row in correct_data])
     for row in correct_data:
-        assert np.any([np.allclose(float(row[0]), _row[0], atol=2e-3) for _row in data])
+        assert np.any([np.allclose(float(row[0]), _row[0], atol=1e-2) for _row in data])
         assert np.any([row[1] == _row[1] for _row in data])
 
 
-def test_find_local_max_ipopt_fixed_experiments():
-    # define problem: no NChooseK constraints, 1 fixed_experiment
+def test_find_local_max_ipopt_pre_fixed_experiments():
+    # define problem: no NChooseK constraints, 1 pre_fixed_experiment
     problem = opti.Problem(
         inputs=opti.Parameters([opti.Continuous(f"x{i+1}", [0, 1]) for i in range(3)]),
         outputs=[opti.Continuous("y")],
@@ -244,7 +244,7 @@ def test_find_local_max_ipopt_fixed_experiments():
         problem,
         "linear",
         n_experiments=12,
-        fixed_experiments=[[0.3, 0.5, 0.2]],
+        pre_fixed_experiments=[[0.3, 0.5, 0.2]],
     )
     opt = np.array(
         [
@@ -267,10 +267,10 @@ def test_find_local_max_ipopt_fixed_experiments():
             problem,
             "linear",
             n_experiments=12,
-            fixed_experiments=np.ones(shape=(12, 3)),
+            pre_fixed_experiments=np.ones(shape=(12, 3)),
         )
 
-    # define problem: with NChooseK constraints, 2 fixed_experiments
+    # define problem: with NChooseK constraints, 2 pre_fixed_experiments
     problem = opti.Problem(
         inputs=opti.Parameters([opti.Continuous(f"x{i+1}", [0, 1]) for i in range(3)]),
         outputs=[opti.Continuous("y")],
@@ -285,7 +285,7 @@ def test_find_local_max_ipopt_fixed_experiments():
             problem,
             "fully-quadratic",
             ipopt_options={"maxiter": 100},
-            fixed_experiments=[[1, 0, 0], [0, 1, 0]],
+            pre_fixed_experiments=[[1, 0, 0], [0, 1, 0]],
         )
     opt = np.eye(3)
     for row in A.to_numpy():
@@ -293,6 +293,95 @@ def test_find_local_max_ipopt_fixed_experiments():
     for o in opt:
         assert any([np.allclose(o, row, atol=1e-2) for row in A.to_numpy()])
     assert np.allclose(A.to_numpy()[:2, :], opt[:2, :])
+
+
+def test_find_local_max_post_fixed_experiments():
+    # 2 post-fixed experiments
+    inputs = [opti.Continuous("x1", [0, 1]), opti.Categorical("x2", ["a", "b"])]
+    problem = opti.Problem(
+        inputs=opti.Parameters(inputs),
+        outputs=[opti.Continuous("y")],
+        constraints=[],
+    )
+
+    np.random.seed(1)
+    data = find_local_max_ipopt(
+        problem=problem,
+        model_type="fully-quadratic",
+        n_experiments=10,
+        post_fixed_experiments=[[0.0, "a"], [0.5, "b"]],
+    ).to_numpy()
+
+    correct_data = np.array(
+        [
+            [1.0, "a"],
+            [1.0, "b"],
+            [0.0, "a"],
+            [0.0, "b"],
+            [0.5, "a"],
+            [0.5, "b"],
+        ]
+    )
+
+    assert np.shape(data) == (10, 2)
+    for row in data:
+        assert np.any(
+            [np.allclose(row[0], float(_row[0]), atol=1e-2) for _row in correct_data]
+        )
+        assert np.any([row[1] == _row[1] for _row in correct_data])
+    for row in correct_data:
+        assert np.any([np.allclose(float(row[0]), _row[0], atol=1e-2) for _row in data])
+        assert np.any([row[1] == _row[1] for _row in data])
+    assert np.allclose(data[-2][0], 0.0)
+    assert data[-2][1] == "a"
+    assert np.allclose(data[-1][0], 0.5)
+    assert data[-1][1] == "b"
+
+    # pre-fixed and post-fixed experiments
+    problem = opti.Problem(
+        inputs=opti.Parameters([opti.Continuous(f"x{i+1}", [0, 1]) for i in range(3)]),
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.LinearEquality(names=["x1", "x2", "x3"], rhs=1),
+            opti.LinearInequality(["x2"], lhs=[-1], rhs=-0.1),
+            opti.LinearInequality(["x3"], lhs=[1], rhs=0.6),
+            opti.LinearInequality(["x1", "x2"], lhs=[5, 4], rhs=3.9),
+            opti.LinearInequality(["x1", "x2"], lhs=[-20, 5], rhs=-3),
+        ],
+    )
+
+    np.random.seed(1)
+    A = find_local_max_ipopt(
+        problem,
+        "linear",
+        n_experiments=13,
+        pre_fixed_experiments=[[0.3, 0.5, 0.2]],
+        post_fixed_experiments=[[0.3, 0.5, 0.2]],
+    )
+    opt = np.array(
+        [
+            [0.2, 0.2, 0.6],
+            [0.3, 0.6, 0.1],
+            [0.7, 0.1, 0.2],
+            [0.3, 0.1, 0.6],
+            [0.3, 0.5, 0.2],
+        ]
+    )
+    for row in A.to_numpy():
+        assert any([np.allclose(row, o, atol=1e-2) for o in opt])
+    for o in opt[:-1]:
+        assert any([np.allclose(o, row, atol=1e-2) for row in A.to_numpy()])
+    assert np.allclose(A.to_numpy()[0, :], np.array([0.3, 0.5, 0.2]))
+    assert np.allclose(A.to_numpy()[-1, :], np.array([0.3, 0.5, 0.2]))
+
+    # invalid proposal
+    with pytest.raises(ValueError):
+        find_local_max_ipopt(
+            problem,
+            "linear",
+            n_experiments=12,
+            post_fixed_experiments=np.ones(shape=(12, 3)),
+        )
 
 
 def test_check_fixed_experiments():
