@@ -68,8 +68,8 @@ def find_local_max_ipopt(
     ipopt_options: Dict = {},
     jacobian_building_block: Optional[Callable] = None,
     sampling: Union[Sampling, np.ndarray] = OptiSampling,
-    fixed_experiments: Optional[np.ndarray] = None,
-    relax_problem: bool = True,
+    pre_fixed_experiments: Optional[np.ndarray] = None,
+    post_fixed_experiments: Optional[np.ndarray] = None,
 ) -> pd.DataFrame:
     """Function computing a d-optimal design" for a given opti problem and model.
 
@@ -85,8 +85,10 @@ def find_local_max_ipopt(
         jacobian_building_block (Callable): Only needed for models of higher order than 3. derivatives
             of each model term with respect to each input variable.
         sampling (Sampling, np.ndarray): Sampling class or a np.ndarray object containing the initial guess.
-        fixed_experiments (np.ndarray): numpy array containing experiments that will definitely part of the design.
+        pre_fixed_experiments (np.ndarray): numpy array containing experiments that will definitely be part of the design.
             Values are set before the optimization.
+        post_fixed_experiments (np.ndarray): numpy array containing experiments that will definitely be part of the design.
+            Values are set after the optimization.
         relax_problem (bool): Needed to solve for categorical and discrete inputs. If flag True, a relaxed
             version of the problem is generated, solved, and its solution projected into the feasible space
             of the original problem
@@ -97,7 +99,7 @@ def find_local_max_ipopt(
 
     """
     problem_context = ProblemContext(problem=problem)
-    # determine number of experiments
+    # determine minimum number of experiments
     n_experiments_min = (
         len(
             problem_context.get_formula_from_string(
@@ -141,12 +143,19 @@ def find_local_max_ipopt(
                 constraints=_constraints,
             )
 
+    # set number of experiments, reduction due to post_fixed_experiments possible
     if n_experiments is None:
         n_experiments = n_experiments_min
     elif n_experiments < n_experiments_min:
         warnings.warn(
             f"The minimum number of experiments is {n_experiments_min}, but the current setting is n_experiments={n_experiments}."
         )
+
+    if post_fixed_experiments is not None:
+        check_fixed_experiments(
+            problem_context.original_problem, n_experiments, post_fixed_experiments
+        )
+        n_experiments -= np.array(post_fixed_experiments).shape[0]
 
     # initital values
     if isinstance(sampling, np.ndarray):
@@ -175,12 +184,12 @@ def find_local_max_ipopt(
     bounds = nchoosek_constraints_as_bounds(problem_context.problem, n_experiments)
 
     # fix experiments if any are given
-    if fixed_experiments is not None:
-        fixed_experiments = np.array(fixed_experiments)
+    if pre_fixed_experiments is not None:
+        pre_fixed_experiments = np.array(pre_fixed_experiments)
         check_fixed_experiments(
-            problem_context.problem, n_experiments, fixed_experiments
+            problem_context.original_problem, n_experiments, pre_fixed_experiments
         )
-        for i, val in enumerate(fixed_experiments.flatten()):
+        for i, val in enumerate(pre_fixed_experiments.flatten()):
             bounds[i] = (val, val)
             x0[i] = val
 
@@ -211,6 +220,14 @@ def find_local_max_ipopt(
     if problem_context.is_relaxed:
         A = problem_context.transform_onto_original_problem(A)
 
+    # check and add post_fixed_experiments to the design
+    if post_fixed_experiments is not None:
+        post_fixed_experiments = pd.DataFrame(
+            post_fixed_experiments,
+            columns=problem_context.original_problem.inputs.names,
+        )
+        A = pd.concat((A, post_fixed_experiments), axis=0)
+
     # exit message
     if _ipopt_options[b"print_level"] > 12:
         for key in ["fun", "message", "nfev", "nit", "njev", "status", "success"]:
@@ -225,7 +242,7 @@ def find_local_max_ipopt(
 def check_fixed_experiments(
     problem: opti.Problem, n_experiments: int, fixed_experiments: np.ndarray
 ) -> None:
-    """Checks if the shape of the fixed experiments is correct and if the number of fixed experiments is valid
+    """Checks if the shape of the fixed experiments is correct and if the number of fixed experiments is valid.
     Args:
         problem (opti.Problem): problem defining the input variables used for the check.
         n_experiments (int): total number of experiments in the design that fixed_experiments are part of.
@@ -236,7 +253,7 @@ def check_fixed_experiments(
 
     if n_fixed_experiments >= n_experiments:
         raise ValueError(
-            "For starting the optimization the total number of experiments must be larger that the number of fixed experiments."
+            "For starting the optimization the total number of experiments must be larger than the number of fixed experiments."
         )
 
     if D != problem.n_inputs:
