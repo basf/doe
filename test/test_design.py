@@ -1,8 +1,11 @@
+import warnings
+
 import numpy as np
 import opti
 import pytest
 
 from doe.design import (
+    check_constraints_and_domain_respected,
     check_fixed_experiments,
     find_local_max_ipopt,
     get_objective,
@@ -317,3 +320,38 @@ def test_check_fixed_experiments():
     fixed_experiments = np.array([[1, 0, 0, 0], [0, 1, 0, 0]])
     with pytest.raises(ValueError):
         check_fixed_experiments(problem, 3, fixed_experiments)
+
+
+def test_check_constraints_and_domain_respected():
+    # problem with unfulfillable constraints
+    inputs = ["x1", "x2", "x3"]
+    # formulation constraint
+    constr1 = opti.LinearEquality(names=inputs, rhs=1)
+    problem = opti.Problem(
+        inputs=[opti.Continuous(x, domain=[0.5, 1]) for x in inputs],
+        outputs=[opti.Continuous("y")],
+        constraints=[constr1],
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        A = find_local_max_ipopt(problem=problem, model_type="linear")
+
+    with pytest.warns(UserWarning, match="Please check your results"):
+        check_constraints_and_domain_respected(problem, A, 0)
+
+    # everything ok
+    problem = opti.Problem(
+        inputs=opti.Parameters([opti.Continuous(f"x{i+1}", [0, 1]) for i in range(3)]),
+        outputs=[opti.Continuous("y")],
+        constraints=[
+            opti.LinearEquality(names=["x1", "x2", "x3"], rhs=1),
+            opti.NChooseK(names=["x1", "x2", "x3"], max_active=1),
+        ],
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        A = find_local_max_ipopt(problem=problem, model_type="linear")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        check_constraints_and_domain_respected(problem, A, 0)
