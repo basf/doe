@@ -6,6 +6,7 @@ import opti
 import pandas as pd
 from cyipopt import minimize_ipopt
 from formulaic import Formula
+from opti.parameter import Continuous
 from scipy.optimize._minimize import standardize_constraints
 
 from doe.jacobian import JacobianForLogdet
@@ -219,6 +220,9 @@ def find_local_max_ipopt(
         d = metrics(X, problem_context.problem, n_samples=1000)
         print("metrics:", d)
 
+    # check if all points respect the domain and the constraints
+    check_constraints_and_domain_respected(problem=problem, A=A, tol=tol)
+
     return A
 
 
@@ -242,4 +246,50 @@ def check_fixed_experiments(
     if D != problem.n_inputs:
         raise ValueError(
             f"Invalid shape of fixed_experiments. Length along axis 1 is {D}, but must be {problem.n_inputs}"
+        )
+
+
+def check_constraints_and_domain_respected(
+    problem: opti.Problem, A: pd.DataFrame, tol: float
+) -> None:
+    """Checks if all points of a design A satisfy the constraints and domain of a given opti.Problem.
+    Warns if at least one point does not.
+
+    Args:
+        problem (opti.Problem): Problem object used for the check.
+        A (pd.DataFrame): design matrix used for the check.
+        tol (float): tolerance for constraint violation.
+    """
+
+    # warn if solutions do not satisfy constraints or bounds
+    tol = np.max([tol, 1e-6])  # only warn for sufficiently large constraint violations
+    if problem.constraints is not None:
+        constraints_satisfied = np.all(
+            [(c(A) <= tol) for c in problem.constraints if not c.is_equality]
+            + [(np.abs(c(A)) <= tol) for c in problem.constraints if c.is_equality]
+        )
+        if not constraints_satisfied:
+            warnings.warn(
+                "Some constraints are violated in this design. Please check your results.",
+                UserWarning,
+            )
+
+    inside_domain = [
+        problem.inputs[k].contains(v)
+        for k, v in A.items()
+        if not isinstance(problem.inputs[k], Continuous)
+    ]
+    inside_domain += [
+        np.logical_and(
+            problem.inputs[k].bounds[1] + 1e-6 >= v,
+            problem.inputs[k].bounds[0] - 1e-6 <= v,
+        )
+        for k, v in A.items()
+        if isinstance(problem.inputs[k], Continuous)
+    ]
+    inside_domain = np.all(np.stack(inside_domain, axis=1))
+    if not inside_domain:
+        warnings.warn(
+            "Some points do not lie inside the domain. Please check your results.",
+            UserWarning,
         )
