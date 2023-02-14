@@ -1,4 +1,3 @@
-import sys
 import warnings
 from copy import deepcopy
 from itertools import combinations
@@ -184,13 +183,8 @@ class ProblemContext:
     def get_formula_from_string(
         self,
         model_type: Union[str, Formula] = "linear",
-        rhs_only: bool = True,
     ) -> Formula:
-        return get_formula_from_string(
-            model_type=model_type,
-            problem_context=self,
-            rhs_only=rhs_only,
-        )
+        return get_formula_from_string(model_type=model_type, problem_context=self)
 
 
 def value2cat(value: pd.Series, input: opti.Categorical):
@@ -212,7 +206,6 @@ def value2discrete(value: np.float64, input: opti.Discrete):
 def get_formula_from_string(
     model_type: Union[str, Formula] = "linear",
     problem_context: Optional[ProblemContext] = None,
-    rhs_only: bool = True,
 ) -> Formula:
     """Reformulates a string describing a model or certain keywords as Formula objects.
 
@@ -220,52 +213,37 @@ def get_formula_from_string(
         model_type (str or Formula): A formula containing all model terms.
         problem_context (ProblemContext): A problem context that nests necessary information on
         how to translate a problem to a formula. Contains a problem.
-        rhs_only (bool): The function returns only the right hand side of the formula if set to True.
-        Returns:
-    A Formula object describing the model that was given as string or keyword.
-    """
-    # set maximum recursion depth to higher value
-    recursion_limit = sys.getrecursionlimit()
-    sys.setrecursionlimit(2000)
 
+    Returns:
+        A Formula object describing the model that was given as string or keyword.
+    """
     if isinstance(model_type, Formula):
         return model_type
-        # build model if a keyword and a problem are given.
+
+    # linear model
+    if model_type == "linear":
+        formula = linear_formula(problem_context=problem_context)
+    # linear and interactions model
+    elif model_type == "linear-and-quadratic":
+        formula = linear_and_quadratic_formula(problem_context=problem_context)
+    # linear and quadratic model
+    elif model_type == "linear-and-interactions":
+        formula = linear_and_interactions_formula(problem_context=problem_context)
+    # fully quadratic model
+    elif model_type == "fully-quadratic":
+        formula = fully_quadratic_formula(problem_context=problem_context)
     else:
-        # linear model
-        if model_type == "linear":
-            formula = linear_formula(problem_context=problem_context)
-
-        # linear and interactions model
-        elif model_type == "linear-and-quadratic":
-            formula = linear_and_quadratic_formula(problem_context=problem_context)
-
-        # linear and quadratic model
-        elif model_type == "linear-and-interactions":
-            formula = linear_and_interactions_formula(problem_context=problem_context)
-
-        # fully quadratic model
-        elif model_type == "fully-quadratic":
-            formula = fully_quadratic_formula(problem_context=problem_context)
-
-        else:
-            formula = model_type + "   "
+        formula = model_type + "   "
 
     formula = Formula(formula[:-3])
 
-    if rhs_only:
-        if hasattr(formula, "rhs"):
-            formula = formula.rhs
-
-    # set recursion limit to old value
-    sys.setrecursionlimit(recursion_limit)
+    if hasattr(formula, "rhs"):
+        return formula.rhs
 
     return formula
 
 
-def linear_formula(
-    problem_context: Optional[ProblemContext],
-) -> str:
+def linear_formula(problem_context: Optional[ProblemContext]) -> str:
     """Reformulates a string describing a linear-model or certain keywords as Formula objects.
         formula = model_type + "   "
 
@@ -394,18 +372,16 @@ def fully_quadratic_formula(
 def n_zero_eigvals(
     problem_context: ProblemContext, model_type: Union[str, Formula], epsilon=1e-7
 ) -> int:
-    """Determine the number of eigenvalues of the information matrix that are necessarily zero because of
-    equality constraints."""
+    """Determine the number of eigenvalues of the information matrix that are
+    necessarily zero because of equality constraints."""
 
     # sample points (fulfilling the constraints)
-    model_formula = problem_context.get_formula_from_string(
-        model_type=model_type, rhs_only=True
-    )
-    N = len(model_formula.terms) + 3
+    formula = problem_context.get_formula_from_string(model_type)
+    N = sum(1 for _ in formula) + 3
     X = problem_context.problem.sample_inputs(N)
 
     # compute eigenvalues of information matrix
-    A = model_formula.get_model_matrix(X)
+    A = formula.get_model_matrix(X)
     eigvals = np.abs(np.linalg.eigvalsh(A.T @ A))
 
     return len(eigvals) - len(eigvals[eigvals > epsilon])

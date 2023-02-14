@@ -40,7 +40,7 @@ setup(
     packages=["doe"],
     python_requires=">=3.7",
     install_requires=[
-        "formulaic==0.3.4",
+        "formulaic>=0.5",
         "loguru",
         "mopti",
         "numpy",
