@@ -21,7 +21,7 @@ jobs:
           black --check doe test
           flake8 --verbose doe test
           isort . --check-only --verbose
-      - name: Install
+      - name: Install cyipopt
         run: |
           sudo apt-get -y --no-install-recommends install \
             coinor-libipopt1v5 \
