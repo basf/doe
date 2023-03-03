@@ -762,7 +762,6 @@ def test_nchoosek_constraints_as_bounds():
         assert _bounds[i] == bounds[i]
 
 
-# TODO: implement
 def test_ProblemContext_has_constraint_with_cats_or_discrete_variables():
     # No constriants
     problem = opti.Problem(
