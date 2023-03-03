@@ -20,7 +20,7 @@ from doe.utils import (
 )
 
 
-def get_formula_from_string_recursion_limit():
+def test_get_formula_from_string_recursion_limit():
     # save recursion limit
     recursion_limit = sys.getrecursionlimit()
 
@@ -760,3 +760,53 @@ def test_nchoosek_constraints_as_bounds():
     assert len(bounds) == 20
     for i in range(20):
         assert _bounds[i] == bounds[i]
+
+
+# TODO: implement
+def test_ProblemContext_has_constraint_with_cats_or_discrete_variables():
+    # No constriants
+    problem = opti.Problem(
+        inputs=[opti.Continuous("x1", [0, 1])],
+        outputs=[opti.Continuous("y")],
+    )
+    problem_context = ProblemContext(problem)
+    assert not problem_context.has_constraint_with_cats_or_discrete_variables
+
+    # Constraints not on categorical or discrete variables
+    problem = opti.Problem(
+        inputs=[
+            opti.Continuous("x1", [0, 1]),
+            opti.Categorical("x2", ["A", "B"]),
+            opti.Discrete("x3", [0, 1]),
+        ],
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.LinearEquality(names=["x1"])],
+    )
+    problem_context = ProblemContext(problem)
+    assert not problem_context.has_constraint_with_cats_or_discrete_variables
+
+    # Nonlinear Constraints
+    problem = opti.Problem(
+        inputs=[
+            opti.Continuous("x1", [0, 1]),
+            opti.Categorical("x2", ["A", "B"]),
+            opti.Discrete("x3", [0, 1]),
+        ],
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.NonlinearEquality("x2**2 + x3**2")],
+    )
+    problem_context = ProblemContext(problem)
+    assert not problem_context.has_constraint_with_cats_or_discrete_variables
+
+    # Constraints on categorical/discrete variables
+    problem = opti.Problem(
+        inputs=[
+            opti.Continuous("x1", [0, 1]),
+            opti.Categorical("x2", ["A", "B"]),
+            opti.Discrete("x3", [0, 1]),
+        ],
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.LinearEquality(names=["x1", "x2", "x3"])],
+    )
+    problem_context = ProblemContext(problem)
+    assert problem_context.has_constraint_with_cats_or_discrete_variables
