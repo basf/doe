@@ -144,4 +144,28 @@ class ProbabilitySimplexSampling(Sampling):
         return x0.flatten()
 
 
+class DomainUniformSampling(Sampling):
+    """Sample uniformly from a given problem's domain."""
+
+    def __init__(self, problem: opti.Problem) -> None:
+        """
+        Args:
+            problem (opti.Problem): problem defining the design space to sample from
+        """
+        self.problem = problem
+
+    def sample(self, n_experiments: int) -> np.ndarray:
+        # sample from unit hypercube
+        x0 = np.random.uniform(size=(n_experiments, self.problem.n_inputs))
+
+        # scale and shift
+        scalings = (
+            self.problem.inputs.bounds.loc["max"]
+            - self.problem.inputs.bounds.loc["min"]
+        ).to_numpy()[np.newaxis, :]
+        x0 = x0 * scalings + self.problem.inputs.bounds.loc["min"].to_numpy()
+
+        return x0.flatten()
+
+
 # TODO: Mixed Sampling

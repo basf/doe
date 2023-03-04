@@ -10,7 +10,7 @@ from opti.parameter import Continuous
 from scipy.optimize._minimize import standardize_constraints
 
 from doe.jacobian import JacobianForLogdet
-from doe.sampling import OptiSampling, Sampling
+from doe.sampling import DomainUniformSampling, OptiSampling, Sampling
 from doe.utils import (
     ProblemContext,
     constraints_as_scipy_constraints,
@@ -70,7 +70,6 @@ def find_local_max_ipopt(
     jacobian_building_block: Optional[Callable] = None,
     sampling: Union[Sampling, np.ndarray] = OptiSampling,
     fixed_experiments: Optional[np.ndarray] = None,
-    relax_problem: bool = True,
 ) -> pd.DataFrame:
     """Function computing a d-optimal design" for a given opti problem and model.
 
@@ -88,9 +87,6 @@ def find_local_max_ipopt(
         sampling (Sampling, np.ndarray): Sampling class or a np.ndarray object containing the initial guess.
         fixed_experiments (np.ndarray): numpy array containing experiments that will definitely part of the design.
             Values are set before the optimization.
-        relax_problem (bool): Needed to solve for categorical and discrete inputs. If flag True, a relaxed
-            version of the problem is generated, solved, and its solution projected into the feasible space
-            of the original problem
 
     Returns:
         A pd.DataFrame object containing the best found input for the experiments. This is only a
@@ -169,7 +165,15 @@ def find_local_max_ipopt(
     if isinstance(sampling, np.ndarray):
         x0 = sampling
     else:
-        x0 = sampling(_problem).sample(n_experiments)
+        try:
+            x0 = sampling(_problem).sample(n_experiments)
+        except Exception:
+            warnings.warn(
+                "Sampling failed. Falling back to uniform sampling on input domain.\
+                          Providing a custom sampling strategy compatible with the problem can \
+                          possibly improve performance."
+            )
+            x0 = DomainUniformSampling(_problem).sample(n_experiments)
 
     #
     # Construct objective function, jacobian, constraints, bounds and fixed experiments and solver options

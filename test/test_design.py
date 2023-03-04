@@ -354,3 +354,23 @@ def test_check_constraints_and_domain_respected():
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         check_constraints_and_domain_respected(problem, A, 0)
+
+
+def test_find_local_max_ipopt_nonlinear_constraint():
+    problem = opti.Problem(
+        inputs=opti.Parameters(
+            [
+                opti.Continuous("x1", [-1, 1]),
+                opti.Continuous("x2", [-1, 1]),
+                opti.Continuous("x3", [0, 1]),
+            ]
+        ),
+        outputs=[opti.Continuous("y")],
+        constraints=[opti.NonlinearInequality("x1**2 + x2**2 - x3")],
+    )
+
+    result = find_local_max_ipopt(
+        problem, "linear", tol=0, ipopt_options={"maxiter": 100}
+    )
+
+    assert np.allclose(problem.constraints(result), 0, atol=1e-6)
