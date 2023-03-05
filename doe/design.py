@@ -10,7 +10,7 @@ from opti.parameter import Continuous
 from scipy.optimize._minimize import standardize_constraints
 
 from doe.jacobian import JacobianForLogdet
-from doe.sampling import OptiSampling, Sampling
+from doe.sampling import DomainUniformSampling, OptiSampling, Sampling
 from doe.utils import (
     ProblemContext,
     constraints_as_scipy_constraints,
@@ -70,7 +70,6 @@ def find_local_max_ipopt(
     jacobian_building_block: Optional[Callable] = None,
     sampling: Union[Sampling, np.ndarray] = OptiSampling,
     fixed_experiments: Optional[np.ndarray] = None,
-    relax_problem: bool = True,
 ) -> pd.DataFrame:
     """Function computing a d-optimal design" for a given opti problem and model.
 
@@ -88,25 +87,33 @@ def find_local_max_ipopt(
         sampling (Sampling, np.ndarray): Sampling class or a np.ndarray object containing the initial guess.
         fixed_experiments (np.ndarray): numpy array containing experiments that will definitely part of the design.
             Values are set before the optimization.
-        relax_problem (bool): Needed to solve for categorical and discrete inputs. If flag True, a relaxed
-            version of the problem is generated, solved, and its solution projected into the feasible space
-            of the original problem
 
     Returns:
         A pd.DataFrame object containing the best found input for the experiments. This is only a
         local optimum.
 
     """
+
+    #
+    # Checks and preparation steps
+    #
+
+    # warn user about usage of nonlinear constraints
+    if problem.constraints:
+        if np.any(
+            [
+                isinstance(c, (opti.NonlinearEquality, opti.LinearEquality))
+                for c in problem.constraints
+            ]
+        ):
+            warnings.warn(
+                "Nonlinear constraints were detected. Not all features and checks are supported for this type of constraints. \
+                Using them can lead to unexpected behaviour.",
+                UserWarning,
+            )
+
+    # generate problem context and relax if needed (only relevant when categorical or discrete variables are present)
     problem_context = ProblemContext(problem=problem)
-    # determine number of experiments
-    n_experiments_min = (
-        len(
-            problem_context.get_formula_from_string(
-                model_type=model_type, rhs_only=True
-            ).terms
-        )
-        + 3
-    )
 
     assert (
         not problem_context.has_constraint_with_cats_or_discrete_variables
@@ -115,16 +122,23 @@ def find_local_max_ipopt(
     if problem_context.has_categoricals or problem_context.has_discrete:
         problem_context.relax_problem()
 
-    D = problem_context.problem.n_inputs
-    model_formula = problem_context.get_formula_from_string(
-        model_type=model_type, rhs_only=True
-    )
+    # determine number of experiments (only relevant if n_experiments is not provided by the user)
+    n_experiments = get_n_experiments(problem_context, model_type, n_experiments)
 
-    # check if there are NChooseK constraints that must be ignored when sampling with opti.Problem.sample_inputs
+    #
+    # Sampling initial values
+    #
+
+    # check if there are NChooseK or nonlinear constraints that must be ignored when sampling with opti.Problem.sample_inputs
     _problem = problem_context.problem
     if problem_context.problem.n_constraints > 0:
         if any(
-            [isinstance(c, opti.NChooseK) for c in problem_context.problem.constraints]
+            [
+                isinstance(
+                    c, (opti.NChooseK, opti.NonlinearEquality, opti.NonlinearInequality)
+                )
+                for c in problem_context.problem.constraints
+            ]
         ) and not all(
             [isinstance(c, opti.NChooseK) for c in problem_context.problem.constraints]
         ):
@@ -142,23 +156,31 @@ def find_local_max_ipopt(
                 constraints=_constraints,
             )
 
-    if n_experiments is None:
-        n_experiments = n_experiments_min
-    elif n_experiments < n_experiments_min:
-        warnings.warn(
-            f"The minimum number of experiments is {n_experiments_min}, but the current setting is n_experiments={n_experiments}."
-        )
-
-    # initital values
+    # do the sampling
     if isinstance(sampling, np.ndarray):
         x0 = sampling
     else:
-        x0 = sampling(_problem).sample(n_experiments)
+        try:
+            x0 = sampling(_problem).sample(n_experiments)
+        except Exception:
+            warnings.warn(
+                "Sampling failed. Falling back to uniform sampling on input domain.\
+                          Providing a custom sampling strategy compatible with the problem can \
+                          possibly improve performance."
+            )
+            x0 = DomainUniformSampling(_problem).sample(n_experiments)
+
+    #
+    # Construct objective function, jacobian, constraints, bounds and fixed experiments and solver options
+    #
 
     # get objective function
     objective = get_objective(problem_context, model_type, delta=delta)
 
     # get jacobian
+    model_formula = problem_context.get_formula_from_string(
+        model_type=model_type, rhs_only=True
+    )
     J = JacobianForLogdet(
         problem_context.problem,
         model_formula,
@@ -192,7 +214,10 @@ def find_local_max_ipopt(
     if _ipopt_options["disp"] > 12:
         _ipopt_options["disp"] = 0
 
-    # do the optimization
+    #
+    # Do the optimization
+    #
+
     result = minimize_ipopt(
         objective,
         x0=x0,
@@ -204,7 +229,7 @@ def find_local_max_ipopt(
     )
 
     A = pd.DataFrame(
-        result["x"].reshape(n_experiments, D),
+        result["x"].reshape(n_experiments, problem_context.problem.n_inputs),
         columns=problem_context.problem.inputs.names,
         index=[f"exp{i}" for i in range(n_experiments)],
     )
@@ -293,3 +318,25 @@ def check_constraints_and_domain_respected(
             "Some points do not lie inside the domain. Please check your results.",
             UserWarning,
         )
+
+
+def get_n_experiments(
+    problem_context: ProblemContext, model_type: Union[str, Formula], n_experiments: int
+):
+    n_experiments_min = (
+        len(
+            problem_context.get_formula_from_string(
+                model_type=model_type, rhs_only=True
+            ).terms
+        )
+        + 3
+    )
+
+    if n_experiments is None:
+        n_experiments = n_experiments_min
+    elif n_experiments < n_experiments_min:
+        warnings.warn(
+            f"The minimum number of experiments is {n_experiments_min}, but the current setting is n_experiments={n_experiments}."
+        )
+
+    return n_experiments

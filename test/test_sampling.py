@@ -4,6 +4,7 @@ import pytest
 
 from doe.sampling import (
     CornerSampling,
+    DomainUniformSampling,
     OptiSampling,
     ProbabilitySimplexSampling,
     Sampling,
@@ -84,3 +85,26 @@ def test_ProbabilitySimplexSampling():
     )
     with pytest.raises(ValueError):
         s = ProbabilitySimplexSampling(problem)
+
+
+def test_DomainUniformSampling():
+    # define problem
+    problem = opti.Problem(
+        inputs=[
+            opti.Continuous("x1", [0, 1]),
+            opti.Continuous("x2", [0, 2]),
+            opti.Continuous("x3", [1, 3]),
+        ],
+        outputs=[opti.Continuous("y")],
+    )
+    s = DomainUniformSampling(problem)
+    x0 = s.sample(50)
+
+    # check sample size
+    assert len(x0) == 150
+
+    # check domain is respected
+    x0 = x0.reshape(50, 3)
+    assert np.all(x0[:, 0] >= 0) and np.all(x0[:, 0] <= 1)
+    assert np.all(x0[:, 1] >= 0) and np.all(x0[:, 1] <= 2)
+    assert np.all(x0[:, 2] >= 1) and np.all(x0[:, 2] <= 3)

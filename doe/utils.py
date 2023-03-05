@@ -161,20 +161,15 @@ class ProblemContext:
     @property
     def has_constraint_with_cats_or_discrete_variables(self) -> bool:
         if self._original_problem.constraints:
-            is_true = np.any(
-                [
-                    np.any(
+            for c in self._original_problem.constraints:
+                if hasattr(c, "names"):
+                    if np.any(
                         [
                             name in self._discrete_list + self._cat_list
-                            for name in c.to_config().get("names")
-                            if name
+                            for name in c.names
                         ]
-                    )
-                    for c in self._original_problem.constraints
-                    if c
-                ]
-            )
-            return is_true
+                    ):
+                        return True
         return False
 
     @property
@@ -527,9 +522,10 @@ class ConstraintWrapper:
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
         "call constraint with flattened numpy array"
-        x[np.abs(x) < self.tol] = 0
         x = pd.DataFrame(x.reshape(len(x) // self.D, self.D), columns=self.names)
-        return self.constraint(x).to_numpy()
+        violation = self.constraint(x).to_numpy()
+        violation[np.abs(violation) < self.tol] = 0
+        return violation
 
 
 def d_optimality(X: np.ndarray, tol=1e-9) -> float:
