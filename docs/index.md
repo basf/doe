@@ -10,7 +10,7 @@ Opti allows to define an arbitrary number of decision variables using <code>Prob
 * categorical: $x_3 \in \{A, B, C\}$.
 
 !!! warning
-    Only continuous decision variables are supported in this package so far.
+    Discrete and categorical variables cannot currently be constrained.
 
 Additionally, constraints on the values of the decision variables can be taken into account, e.g.
 
@@ -20,8 +20,4 @@ Additionally, constraints on the values of the decision variables can be taken i
 * non-linear inequality: $\sum x_i^2 \leq 1$
 * n-choose-k: only $k$ out of $n$ parameters can take non-zero values.
 
-!!! warning
-    doe does not support constraint type <code>opti.NonlinearEquality</code> and <code>opti.NonlinearInequality</code>.
-
 The model to be fitted can be specified using formulaic's <code>Formula</code> objects, strings following Wilkinson notation or - with the context of the problem specification - using certain keywords like <code>"linear"</code> or <code>"fully-quadratic"</code>.
-

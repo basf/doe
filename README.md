@@ -51,8 +51,6 @@ design = find_local_max_ipopt(problem, "linear")
   <img src="https://contrib.rocks/image?repo=basf/doe" />
 </a>
 
-and of course https://github.com/Osburg!
-
-### Math contributors
+### Additional math contributors
 * David Hajnal
 * Jorge Diaz
