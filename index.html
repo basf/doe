@@ -418,7 +418,7 @@
 </ul>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>Only continuous decision variables are supported in this package so far.</p>
+<p>Discrete and categorical variables cannot currently be constrained.</p>
 </div>
 <p>Additionally, constraints on the values of the decision variables can be taken into account, e.g.</p>
 <ul>
@@ -428,10 +428,6 @@
 <li>non-linear inequality: <span class="arithmatex">\(\sum x_i^2 \leq 1\)</span></li>
 <li>n-choose-k: only <span class="arithmatex">\(k\)</span> out of <span class="arithmatex">\(n\)</span> parameters can take non-zero values.</li>
 </ul>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>doe does not support constraint type <code>opti.NonlinearEquality</code> and <code>opti.NonlinearInequality</code>.</p>
-</div>
 <p>The model to be fitted can be specified using formulaic's <code>Formula</code> objects, strings following Wilkinson notation or - with the context of the problem specification - using certain keywords like <code>"linear"</code> or <code>"fully-quadratic"</code>.</p>
 
               
