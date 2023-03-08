@@ -102,7 +102,7 @@ def find_local_max_ipopt(
     if problem.constraints:
         if np.any(
             [
-                isinstance(c, (opti.NonlinearEquality, opti.LinearEquality))
+                isinstance(c, (opti.NonlinearEquality, opti.NonlinearInequality))
                 for c in problem.constraints
             ]
         ):
