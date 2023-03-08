@@ -2,42 +2,42 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://basf.github.io/doe/</loc>
-         <lastmod>2023-03-05</lastmod>
+         <lastmod>2023-03-08</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://basf.github.io/doe/install/</loc>
-         <lastmod>2023-03-05</lastmod>
+         <lastmod>2023-03-08</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://basf.github.io/doe/large_mixture/</loc>
-         <lastmod>2023-03-05</lastmod>
+         <lastmod>2023-03-08</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://basf.github.io/doe/modde_comparison/</loc>
-         <lastmod>2023-03-05</lastmod>
+         <lastmod>2023-03-08</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://basf.github.io/doe/multiple_mixture_constraints/</loc>
-         <lastmod>2023-03-05</lastmod>
+         <lastmod>2023-03-08</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://basf.github.io/doe/nchoosek_constraint/</loc>
-         <lastmod>2023-03-05</lastmod>
+         <lastmod>2023-03-08</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://basf.github.io/doe/tips/</loc>
-         <lastmod>2023-03-05</lastmod>
+         <lastmod>2023-03-08</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://basf.github.io/doe/tutorial/</loc>
-         <lastmod>2023-03-05</lastmod>
+         <lastmod>2023-03-08</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>
