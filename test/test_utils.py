@@ -461,8 +461,8 @@ def test_constraints_as_scipy_constraints():
         inputs=opti.Parameters([opti.Continuous(f"x{i+1}", [0, 1]) for i in range(3)]),
         outputs=[opti.Continuous("y")],
         constraints=[
-            opti.NonlinearEquality("x1**2 + x2**2 - 1"),
-            opti.NonlinearInequality("x1**2 + x2**2 - 1"),
+            opti.NonlinearEquality("x1**2 + x2**2 - 1", names=["x1","x2","x3"]),
+            opti.NonlinearInequality("x1**2 + x2**2 - 1", names=["x1","x2","x3"]),
         ],
     )
 

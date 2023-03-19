@@ -366,7 +366,7 @@ def test_find_local_max_ipopt_nonlinear_constraint():
             ]
         ),
         outputs=[opti.Continuous("y")],
-        constraints=[opti.NonlinearInequality("x1**2 + x2**2 - x3")],
+        constraints=[opti.NonlinearInequality("x1**2 + x2**2 - x3", names=["x1","x2","x3"], jacobian="[2*x1,2*x2,-1]")],
     )
 
     result = find_local_max_ipopt(
