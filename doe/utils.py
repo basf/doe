@@ -532,6 +532,13 @@ class ConstraintWrapper:
         self.names = problem.inputs.names
         self.D = problem.n_inputs
         self.n_experiments = n_experiments
+        if constraint.names is None:
+            raise ValueError(
+                f"The features attribute of constraint {constraint} is not set, but has to be set."
+            )
+        self.constraint_name_indices = np.searchsorted(
+            self.names, self.constraint.names
+        )
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
         """call constraint with flattened numpy array."""
@@ -543,13 +550,20 @@ class ConstraintWrapper:
     def jacobian(self, x: np.ndarray) -> np.ndarray:
         """call constraint gradient with flattened numpy array."""
         x = pd.DataFrame(x.reshape(len(x) // self.D, self.D), columns=self.names)
-        gradient_compressed = self.constraint.jacobian(x).to_numpy()
+        jacobian_compressed = self.constraint.jacobian(x).to_numpy()
 
-        gradient = np.zeros(shape=(self.n_experiments, self.D * self.n_experiments))
-        rows = np.repeat(np.arange(self.n_experiments), self.D)
-        cols = np.arange(self.D * self.n_experiments)
-        gradient[rows, cols] = gradient_compressed.flatten()
-        return gradient
+        jacobian = np.zeros(shape=(self.n_experiments, self.D * self.n_experiments))
+        rows = np.repeat(
+            np.arange(self.n_experiments), len(self.constraint_name_indices)
+        )
+        cols = np.repeat(
+            self.D * np.arange(self.n_experiments), len(self.constraint_name_indices)
+        ).reshape((self.n_experiments, len(self.constraint_name_indices)))
+        cols = (cols + self.constraint_name_indices).flatten()
+
+        jacobian[rows, cols] = jacobian_compressed.flatten()
+
+        return jacobian
 
 
 def d_optimality(X: np.ndarray, tol=1e-9) -> float:

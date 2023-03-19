@@ -496,12 +496,21 @@ def test_ConstraintWrapper():
             opti.LinearEquality(names=["x1", "x2", "x3", "x4"], rhs=1),
             opti.LinearInequality(names=["x1", "x2", "x3", "x4"], rhs=1),
             opti.NonlinearEquality(
-                "x1**2 + x2**2 + x3**2 + x4**2 - 1", jacobian="[2*x1,2*x2,2*x3,2*x4]"
+                expression="x1**2 + x2**2 + x3**2 + x4**2 - 1",
+                names=["x1", "x2", "x3", "x4"],
+                jacobian="[2*x1,2*x2,2*x3,2*x4]",
             ),
             opti.NonlinearInequality(
-                "x1**2 + x2**2 + x3**2 + x4**2 - 1", jacobian="[2*x1,2*x2,2*x3,2*x4]"
+                expression="x1**2 + x2**2 + x3**2 + x4**2 - 1",
+                names=["x1", "x2", "x3", "x4"],
+                jacobian="[2*x1,2*x2,2*x3,2*x4]",
             ),
             opti.NChooseK(names=["x1", "x2", "x3", "x4"], max_active=3),
+            opti.NonlinearEquality(
+                expression="x1**2 + x4**2 - 1",
+                names=["x1", "x4"],
+                jacobian="[2*x1, 2*x4]",
+            ),
         ],
     )
 
@@ -568,6 +577,20 @@ def test_ConstraintWrapper():
     # nchoosek constraint
     c = ConstraintWrapper(problem.constraints[4], problem, n_experiments=3, tol=0)
     assert np.allclose(c(x), np.array([1, 0.5, 0]))
+
+    # constraint not containing all inputs from domain
+    c = ConstraintWrapper(problem.constraints[5], problem, tol=0, n_experiments=3)
+    assert np.allclose(c(x), np.array([1, -0.5, 8]))
+    assert np.allclose(
+        c.jacobian(x),
+        np.array(
+            [
+                [2, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0],
+            ]
+        ),
+    )
 
 
 def test_d_optimality():
