@@ -107,8 +107,7 @@ def find_local_max_ipopt(
             ]
         ):
             warnings.warn(
-                "Nonlinear constraints were detected. Not all features and checks are supported for this type of constraints. \
-                Using them can lead to unexpected behaviour. Please make sure to provide jacobians for nonlinear constraints.",
+                "Nonlinear constraints were detected. Not all features and checks are supported for them. For better performance please make sure to provide their jacobians.",
                 UserWarning,
             )
 

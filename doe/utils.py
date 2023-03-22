@@ -541,14 +541,14 @@ class ConstraintWrapper:
         )
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
-        """call constraint with flattened numpy array."""
+        """Call constraint with flattened numpy array."""
         x = pd.DataFrame(x.reshape(len(x) // self.D, self.D), columns=self.names)
         violation = self.constraint(x).to_numpy()
         violation[np.abs(violation) < self.tol] = 0
         return violation
 
     def jacobian(self, x: np.ndarray) -> np.ndarray:
-        """call constraint gradient with flattened numpy array."""
+        """Call constraint gradient with flattened numpy array."""
         x = pd.DataFrame(x.reshape(len(x) // self.D, self.D), columns=self.names)
         jacobian_compressed = self.constraint.jacobian(x).to_numpy()
 
