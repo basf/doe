@@ -162,7 +162,7 @@ class ProblemContext:
     def has_constraint_with_cats_or_discrete_variables(self) -> bool:
         if self._original_problem.constraints:
             for c in self._original_problem.constraints:
-                if hasattr(c, "names"):
+                if c.names is not None:
                     if np.any(
                         [
                             name in self._discrete_list + self._cat_list
@@ -476,20 +476,30 @@ def constraints_as_scipy_constraints(
             lb = np.zeros(n_experiments) - tol
             ub = np.zeros(n_experiments) + tol
 
-            # define constraint evaluation
-            fun = ConstraintWrapper(constraint=c, problem=problem, tol=tol)
+            # define constraint evaluation (and gradient if provided)
+            fun = ConstraintWrapper(
+                constraint=c, problem=problem, n_experiments=n_experiments, tol=tol
+            )
 
-            constraints.append(NonlinearConstraint(fun, lb, ub))
+            if c.jacobian_expression is not None:
+                constraints.append(NonlinearConstraint(fun, lb, ub, jac=fun.jacobian))
+            else:
+                constraints.append(NonlinearConstraint(fun, lb, ub))
 
         elif isinstance(c, opti.NonlinearInequality):
             # write upper/lower bound as vector
             lb = -np.inf * np.ones(n_experiments)
             ub = np.zeros(n_experiments)
 
-            # define constraint evaluation
-            fun = ConstraintWrapper(constraint=c, problem=problem, tol=tol)
+            # define constraint evaluation (and gradient if provided)
+            fun = ConstraintWrapper(
+                constraint=c, problem=problem, n_experiments=n_experiments, tol=tol
+            )
 
-            constraints.append(NonlinearConstraint(fun, lb, ub))
+            if c.jacobian_expression is not None:
+                constraints.append(NonlinearConstraint(fun, lb, ub, jac=fun.jacobian))
+            else:
+                constraints.append(NonlinearConstraint(fun, lb, ub))
 
         elif isinstance(c, opti.NChooseK):
             pass
@@ -507,25 +517,53 @@ class ConstraintWrapper:
         self,
         constraint: opti.constraint.Constraint,
         problem: opti.Problem,
+        n_experiments: int = 0,
         tol: float = 1e-3,
     ) -> None:
         """
         Args:
             constraint (opti.constraint.Constraint): opti constraint to be called
             problem (opti.Problem): problem the constraint belongs to
+            n_experiments (int): number of experiments
             tol (float): tolerance for constraint violation. Default value is 1e-3.
         """
         self.constraint = constraint
         self.tol = tol
         self.names = problem.inputs.names
         self.D = problem.n_inputs
+        self.n_experiments = n_experiments
+        if constraint.names is None:
+            raise ValueError(
+                f"The features attribute of constraint {constraint} is not set, but has to be set."
+            )
+        self.constraint_name_indices = np.searchsorted(
+            self.names, self.constraint.names
+        )
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
-        "call constraint with flattened numpy array"
+        """Call constraint with flattened numpy array."""
         x = pd.DataFrame(x.reshape(len(x) // self.D, self.D), columns=self.names)
         violation = self.constraint(x).to_numpy()
         violation[np.abs(violation) < self.tol] = 0
         return violation
+
+    def jacobian(self, x: np.ndarray) -> np.ndarray:
+        """Call constraint gradient with flattened numpy array."""
+        x = pd.DataFrame(x.reshape(len(x) // self.D, self.D), columns=self.names)
+        jacobian_compressed = self.constraint.jacobian(x).to_numpy()
+
+        jacobian = np.zeros(shape=(self.n_experiments, self.D * self.n_experiments))
+        rows = np.repeat(
+            np.arange(self.n_experiments), len(self.constraint_name_indices)
+        )
+        cols = np.repeat(
+            self.D * np.arange(self.n_experiments), len(self.constraint_name_indices)
+        ).reshape((self.n_experiments, len(self.constraint_name_indices)))
+        cols = (cols + self.constraint_name_indices).flatten()
+
+        jacobian[rows, cols] = jacobian_compressed.flatten()
+
+        return jacobian
 
 
 def d_optimality(X: np.ndarray, tol=1e-9) -> float:
