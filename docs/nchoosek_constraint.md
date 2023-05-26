@@ -9,8 +9,8 @@ in the corresponding experiments. This causes IPOPT to treat them as "fixed vari
 and will always stick to the only feasible value (which is 0 here).
 However, this constraint is stricter than the original NChooseK constraint. In combination with other
 constraints on the same decision variables this can result in a situation where the constraints cannot be fulfilled
-even though the original constraints would allow for a solution. For example consider a problem with three decision
-variables $x_1, x_2, x_3, x_4$, an NChooseK constraint on all three variable that restricts the number of active constraints
+even though the original constraints would allow for a solution. For example consider a problem with four decision
+variables $x_1, x_2, x_3, x_4$, an NChooseK constraint on the first four variable that restricts the number of nonzero variables
 to two. Additionally, we have a linear constraint
 $$
 x_3 + x_4 \geq 0.1
