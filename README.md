@@ -1,5 +1,7 @@
 # DoE
 
+Warning: DoE is now part of [BoFire](https://github.com/experimental-design/bofire). This repository is no longer maintained, please use BoFire for the latest version.
+
 DoE is a python package for generating (D-)optimal experimental designs. 
 It uses [opti](https://basf.github.io/mopti/) and [formulaic](https://matthewwardrop.github.io/formulaic/) for specifying the design space and model.
 
